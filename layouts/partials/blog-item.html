@@ -1,0 +1,11 @@
+<article style="margin-bottom: 0.25rem; display: flex; gap: 1.5rem;">
+  <div style="flex-shrink: 0; min-width: 5.5rem; padding-top: 0.15rem;">
+    <span style="font-size: 0.95rem; color: #374151; font-weight: 500;">{{ .Date.Format "Jan 2006" }}</span>
+  </div>
+  <div>
+    <p style="font-weight: 500; font-size: 1rem; margin-bottom: 0.1rem;"><a href="{{ .RelPermalink }}">{{ .Title }}</a></p>
+    {{ with .Params.blurb }}
+    <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 0.1rem;">{{ . }}</p>
+    {{ end }}
+  </div>
+</article>

@@ -1,0 +1,40 @@
+baseURL = "/"
+locale = "en-us"
+relativeURLs = true
+publishDir = "docs"
+title = "Trevor Kask"
+copyright = "Trevor Kask"
+
+[[menu.main]]
+name = "Home"
+url = "/"
+weight = 1
+
+[[menu.main]]
+name = "Projects"
+url = "/projects/"
+weight = 2
+
+[[menu.main]]
+name = "Blogs"
+url = "/blogs/"
+weight = 3
+
+[[menu.main]]
+name = "Talks"
+url = "/talks/"
+weight = 4
+
+[markup]
+  [markup.tableOfContents]
+    endLevel = 4
+    ordered = false
+    startLevel = 2
+
+[params]
+  description = """I'm Trevor Kask. This site is a compact home for my work, writing, and projects.
+
+I like building useful software, learning in public, and shaping small ideas into polished, practical tools. The projects below are a starting point for the work I want to highlight here.
+
+You can update this intro in `hugo.toml` as your portfolio takes shape.
+"""
