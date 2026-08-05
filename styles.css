@@ -102,18 +102,14 @@ h1 {
   letter-spacing: 0;
 }
 
-.intro-mark {
-  display: grid;
-  width: 112px;
-  height: 112px;
-  place-items: center;
+.profile-photo {
+  width: 150px;
+  aspect-ratio: 4 / 5;
+  align-self: start;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 1.35rem;
-  font-weight: 700;
+  object-fit: cover;
+  object-position: center 22%;
 }
 
 .bio-text {
@@ -206,6 +202,10 @@ h1 {
   font-weight: 600;
 }
 
+.detail-list h2 a {
+  text-decoration-thickness: 1px;
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   color: #8a929a;
@@ -228,9 +228,8 @@ h1 {
     grid-template-columns: 1fr;
   }
 
-  .intro-mark {
-    width: 88px;
-    height: 88px;
+  .profile-photo {
+    width: 120px;
   }
 
   .item-list li,

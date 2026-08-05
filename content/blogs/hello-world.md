@@ -1,7 +1,7 @@
 ---
-title: "Hello, World"
+title: "What are distributed systems and why do they exist?"
 date: 2026-08-04
-blurb: "A first note for the new portfolio."
+blurb: "Distributed systems from first principles."
 ---
 
-This is a starter blog post. Use this space for project writeups, learning notes, or essays.
+Draft the full post here.

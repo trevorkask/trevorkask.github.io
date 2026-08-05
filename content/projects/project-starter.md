@@ -1,9 +1,9 @@
 ---
-title: "Project Starter"
+title: "Database From Scratch"
 date: 2026-08-03
 label: "Build"
-blurb: "A placeholder for another selected project."
-draft: true
+blurb: "A from-scratch database project focused on storage internals, query execution, and systems tradeoffs."
+external_url: "https://github.com/trevorkask/database"
 ---
 
-Set `draft: false` when this project is ready to publish.
+Project notes will live here as the implementation grows.

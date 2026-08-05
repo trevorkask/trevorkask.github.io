@@ -1,8 +1,9 @@
 ---
-title: "Portfolio Website"
+title: "Redis From Scratch"
 date: 2026-08-04
-label: "Web"
-blurb: "A lightweight personal website built with Hugo and Tailwind, adapted from a clean academic portfolio design."
+label: "Build"
+blurb: "A from-scratch Redis-style data store for learning networked storage systems deeply."
+external_url: "https://github.com/trevorkask/redis"
 ---
 
-This site is the first project entry. Replace this text with the background, stack, links, screenshots, or notes you want visitors to see.
+Project notes will live here as the implementation grows.

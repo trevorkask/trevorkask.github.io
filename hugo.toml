@@ -2,8 +2,8 @@ baseURL = "/"
 locale = "en-us"
 relativeURLs = true
 publishDir = "docs"
-title = "Trevor Kask"
-copyright = "Trevor Kask"
+title = "Trevor Kasuku"
+copyright = "Trevor Kasuku"
 
 [[menu.main]]
 name = "Home"
@@ -21,8 +21,8 @@ url = "/blogs/"
 weight = 3
 
 [[menu.main]]
-name = "Talks"
-url = "/talks/"
+name = "Classes"
+url = "/classes/"
 weight = 4
 
 [markup]
@@ -32,9 +32,7 @@ weight = 4
     startLevel = 2
 
 [params]
-  description = """I'm Trevor Kask. This site is a compact home for my work, writing, and projects.
+  description = """I am a distributed systems engineer at Apple working in a platform/infra team. Our platform is data-intensive and supports ~3B customers. My core skills are in distributed systems algorithms, multi-threaded programming, and data storage systems.
 
-I like building useful software, learning in public, and shaping small ideas into polished, practical tools. The projects below are a starting point for the work I want to highlight here.
-
-You can update this intro in `hugo.toml` as your portfolio takes shape.
+This site is a portfolio of my advanced coursework, projects built from scratch (as Karpathy intended), and blogs explaining my understanding of the concepts I have learned with no jargon (as Feynman intended).
 """

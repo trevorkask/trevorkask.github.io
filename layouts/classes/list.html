@@ -1,0 +1,14 @@
+{{ define "main" }}
+<h1 class="text-2xl font-semibold mb-2">Classes</h1>
+<p class="text-sm text-neutral-500 mb-8">Advanced systems coursework, labs, and notes.</p>
+<hr class="border-neutral-200 mb-8">
+
+<ul style="list-style: none; padding: 0; margin: 0;">
+  {{ range where .Pages ".Params.draft" "!=" true }}
+    <li style="display: flex; gap: 0.75rem; font-size: 0.95rem; margin-bottom: 0.75rem;">
+      <span style="color: #374151; font-weight: 600; flex-shrink: 0; min-width: 5.5rem;">{{ with .Params.label }}{{ . }}{{ else }}{{ .Date.Format "2006" }}{{ end }}</span>
+      <span style="color: #374151;"><a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ with .Params.blurb }}: {{ . }}{{ end }}</span>
+    </li>
+  {{ end }}
+</ul>
+{{ end }}

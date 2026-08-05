@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Trevor Kask</title>
-    <meta name="description" content="Portfolio website for Trevor Kask: projects, blogs, and selected work.">
+    <title>Trevor Kasuku</title>
+    <meta name="description" content="Portfolio website for Trevor Kasuku: distributed systems, databases, projects, blogs, and classes.">
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,10 +12,11 @@
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="/">Trevor Kask</a>
+      <a class="brand" href="/">Trevor Kasuku</a>
       <nav aria-label="Primary navigation">
-        <a href="#projects">Projects</a>
-        <a href="#blogs">Blogs</a>
+        <a href="projects/">Projects</a>
+        <a href="blogs/">Blogs</a>
+        <a href="classes/">Classes</a>
         <a href="https://github.com/trevorkask">GitHub</a>
       </nav>
     </header>
@@ -24,15 +25,15 @@
       <section class="intro" aria-labelledby="intro-title">
         <div>
           <p class="eyebrow">Portfolio</p>
-          <h1 id="intro-title">Trevor Kask</h1>
+          <h1 id="intro-title">Trevor Kasuku</h1>
         </div>
-        <div class="intro-mark" aria-hidden="true">TK</div>
+        <img class="profile-photo" src="images/profile.jpg" alt="Portrait of Trevor Kasuku">
         <div class="bio-text">
           <p>
-            I build useful software, write about what I am learning, and shape small ideas into polished, practical tools.
+            I am a distributed systems engineer at Apple working in a platform/infra team. Our platform is data-intensive and supports ~3B customers. My core skills are in distributed systems algorithms, multi-threaded programming, and data storage systems.
           </p>
           <p>
-            This site is a compact home for selected projects and blog posts. Swap in your own bio, links, and work as the portfolio grows.
+            This site is a portfolio of my advanced coursework, projects built from scratch (as Karpathy intended), and blogs explaining my understanding of the concepts I have learned with no jargon (as Feynman intended).
           </p>
         </div>
       </section>
@@ -44,17 +45,17 @@
         </div>
         <ol class="item-list">
           <li>
-            <span class="item-date">Web</span>
+            <span class="item-date">Build</span>
             <div>
-              <a href="projects/">Portfolio Website</a>
-              <p>A lightweight personal site adapted from a clean academic portfolio design.</p>
+              <a href="https://github.com/trevorkask/redis">Redis From Scratch</a>
+              <p>A from-scratch Redis-style data store for learning networked storage systems deeply.</p>
             </div>
           </li>
           <li>
             <span class="item-date">Build</span>
             <div>
-              <a href="projects/">Project Starter</a>
-              <p>A placeholder slot for the next project you want to feature.</p>
+              <a href="https://github.com/trevorkask/database">Database From Scratch</a>
+              <p>A from-scratch database project focused on storage internals, query execution, and systems tradeoffs.</p>
             </div>
           </li>
         </ol>
@@ -69,8 +70,31 @@
           <li>
             <span class="item-date">Aug 2026</span>
             <div>
-              <a href="blogs/">Hello, World</a>
-              <p>A first note for the new portfolio.</p>
+              <a href="blogs/">What are distributed systems and why do they exist?</a>
+              <p>Distributed systems from first principles.</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section-block" id="classes" aria-labelledby="classes-title">
+        <div class="section-heading">
+          <h2 id="classes-title">Classes</h2>
+          <a href="classes/">View all</a>
+        </div>
+        <ol class="item-list">
+          <li>
+            <span class="item-date">MIT</span>
+            <div>
+              <a href="classes/">6.824 Distributed Systems</a>
+              <p>Labs and notes from a deep pass through distributed systems foundations.</p>
+            </div>
+          </li>
+          <li>
+            <span class="item-date">CMU</span>
+            <div>
+              <a href="classes/">15-445/645 Intro to Database Systems</a>
+              <p>Labs and notes on storage, execution, indexing, transactions, and database architecture.</p>
             </div>
           </li>
         </ol>
@@ -78,7 +102,7 @@
     </main>
 
     <footer class="site-footer">
-      <p>&copy; 2026 Trevor Kask.</p>
+      <p>&copy; 2026 Trevor Kasuku.</p>
     </footer>
   </body>
 </html>
