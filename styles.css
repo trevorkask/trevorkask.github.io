@@ -206,6 +206,122 @@ h1 {
   text-decoration-thickness: 1px;
 }
 
+.course-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.84rem;
+}
+
+.course-actions a,
+.course-actions span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  text-decoration: none;
+}
+
+.course-actions span {
+  color: var(--muted);
+}
+
+body.notes-page {
+  background: #050505;
+  color: #f5f5f0;
+}
+
+.notes-page a {
+  color: #f3efe2;
+  text-decoration-color: rgba(243, 239, 226, 0.45);
+}
+
+.notes-header {
+  color: #d9d6c9;
+}
+
+.notes-shell {
+  width: min(100% - 32px, 820px);
+  margin: 0 auto;
+  padding: 42px 0 64px;
+}
+
+.notes-title {
+  border-bottom: 1px solid rgba(245, 245, 240, 0.2);
+  margin-bottom: 34px;
+  padding-bottom: 26px;
+}
+
+.notes-title h1 {
+  color: #fffdf5;
+  font-size: clamp(2.2rem, 7vw, 4rem);
+}
+
+.notes-title p:last-child {
+  color: #bdb8a7;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.notes-content {
+  color: #e7e3d4;
+  font-size: 1.02rem;
+  line-height: 1.72;
+}
+
+.notes-content section + section {
+  border-top: 1px solid rgba(245, 245, 240, 0.16);
+  margin-top: 44px;
+  padding-top: 34px;
+}
+
+.notes-content h2 {
+  color: #fffdf5;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.45rem;
+  margin: 0 0 22px;
+}
+
+.notes-content h3 {
+  color: #fff8dc;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.98rem;
+  margin: 24px 0 8px;
+}
+
+.notes-content p,
+.notes-content ul {
+  margin: 0 0 16px;
+}
+
+.notes-content li + li {
+  margin-top: 7px;
+}
+
+.notes-content code {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: #fff8dc;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 1px 5px;
+}
+
+.notes-content pre {
+  overflow-x: auto;
+  background: #111;
+  border: 1px solid rgba(245, 245, 240, 0.16);
+  border-radius: 8px;
+  margin: 18px 0;
+  padding: 18px;
+}
+
+.notes-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   color: #8a929a;
@@ -236,5 +352,9 @@ h1 {
   .detail-list li {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .course-actions {
+    gap: 8px;
   }
 }

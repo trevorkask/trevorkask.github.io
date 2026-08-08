@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MIT 6.824 Notes | Trevor Kasuku</title>
+    <meta name="description" content="MIT 6.824 distributed systems lecture notes by Trevor Kasuku.">
+    <link rel="stylesheet" href="../../../styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
+  </head>
+  <body class="notes-page">
+    <header class="site-header notes-header">
+      <a class="brand" href="../../../">Trevor Kasuku</a>
+      <nav aria-label="Primary navigation">
+        <a href="../../../projects/">Projects</a>
+        <a href="../../../blogs/">Blogs</a>
+        <a href="../../../classes/">Classes</a>
+        <a href="https://github.com/trevorkask">GitHub</a>
+      </nav>
+    </header>
+
+    <main class="notes-shell">
+      <section class="notes-title">
+        <p class="eyebrow">MIT 6.824</p>
+        <h1>Distributed Systems Notes</h1>
+        <p>Lecture 1: Introduction and Lecture 2: RPC &amp; Threads.</p>
+      </section>
+
+      <article class="notes-content">
+        <section>
+          <h2>Lecture 1: Introduction</h2>
+
+          <h3>Why distributed systems?</h3>
+          <ul>
+            <li>Parallelism for high performance: lots of CPUs and lots of memory.</li>
+            <li>Fault tolerance: have two computers do the same thing; if one fails, cut over to the other one.</li>
+            <li>Naturally spread out: bank A has a computer in NYC and another in London, and they need to communicate.</li>
+            <li>Security: if there is code you do not trust, split the computation and isolate pieces so they communicate over a narrow path.</li>
+          </ul>
+
+          <h3>Challenges</h3>
+          <ul>
+            <li>Concurrency: a distributed system has many parts communicating concurrently, which creates weird timing problems and interleavings across computers.</li>
+            <li>Partial failures: networks and multiple moving pieces create unexpected failure patterns. Some pieces stop working while others continue. Sometimes the computers are working but part of the network is broken or unreliable. In a one-computer setup, it either fails or works.</li>
+          </ul>
+
+          <h3>Infrastructure and abstractions</h3>
+          <ul>
+            <li>Storage</li>
+            <li>Communication</li>
+            <li>Computation</li>
+          </ul>
+
+          <h3>Implementations</h3>
+          <ul>
+            <li>RPC</li>
+            <li>Threads</li>
+            <li>Concurrency control, such as locks</li>
+          </ul>
+
+          <h3>Performance</h3>
+          <p>
+            We can start by creating more servers to handle requests to the database. At some point, more servers will not increase performance because the database becomes the bottleneck. It is not straightforward to set up multiple databases.
+          </p>
+
+          <h3>Fault tolerance</h3>
+          <ul>
+            <li>It is not uncommon to have one computer stay up for an amazing amount of time. However, with 1000 computers, even if each computer is expected to stay up for a year, you will have about 3 computer failures a day.</li>
+            <li>A computer could crash or hang. A cable could get stepped on.</li>
+            <li>We need infrastructure that hides the failure from application users.</li>
+            <li>Availability: under certain kinds of failures, the system continues to operate as if there were no failure. For example, a replicated service on two computers can still serve from one. If both fail, we cannot offer the service anymore.</li>
+            <li>Recoverability: if something wrong happens, it can be fixed and come back up.</li>
+            <li>We need non-volatile storage like hard drives.</li>
+            <li>Replication: managing replica copies is tricky. If two servers each have a supposedly identical copy of the system's data, the key problem is that the replicas can drift out of sync. To avoid correlated faults, replicas should not be close to each other, such as in the same rack. If someone steps on a cable, both replicas might die. We therefore put replicas in different cities or countries.</li>
+          </ul>
+
+          <h3>Consistency</h3>
+          <ul>
+            <li><code>put(k, v)</code> and <code>get(k) -> v</code>.</li>
+            <li>In a distributed system, there is usually more than one copy of the data. With one table of data, it is simple to reason about what these two functions mean.</li>
+            <li>If both servers have <code>{k: 1, v: 20}</code> and a <code>put(1, 21)</code> updates both copies, one server might crash after only one copy is updated. One replica has 20 and the other has 21. Most gets may return 21, but one day you could weirdly get 20 instead. Not very consistent.</li>
+            <li>Strong consistency: some version of a guarantee that <code>get</code> sees the most recent <code>put</code>.</li>
+            <li>Weak consistency: does not make that guarantee, and there are many flavors of it. We still like it because strong consistency is expensive. The writer, reader, or both must consult all copies and use the most recently saved value they have seen. When replicas are in different cities, this becomes slow.</li>
+          </ul>
+
+          <h3>MapReduce</h3>
+          <ul>
+            <li>Google had the problem of analyzing pages and figuring out which ones were useful. Even back then, this was several terabytes. They also had to build an index of all pages, which is intensive and takes a lot of time, similar to sorting.</li>
+            <li>The map function runs on each input file and outputs a list of key-value pairs. For example, when counting word occurrences, the key is the word and the value is the count.</li>
+            <li>The reduce function sums up the findings from each output and returns one output.</li>
+            <li>The whole thing is called a job and contains several map and reduce tasks.</li>
+          </ul>
+
+          <pre><code>Map(K, V)
+  K is the file name and V is the file contents
+  Split V into words
+  For each word W:
+    emit("W", 1)
+
+Reduce(K, V)
+  K is the word and V is a vector of 1s
+  emit(len(V))</code></pre>
+        </section>
+
+        <section>
+          <h2>Lecture 2: RPC &amp; Threads</h2>
+
+          <h3>Why Go?</h3>
+          <ul>
+            <li>Good support for threads and synchronization between threads.</li>
+            <li>Convenient RPC package.</li>
+            <li>Type safe and memory safe.</li>
+          </ul>
+
+          <p>
+            Concurrency is important because a computer may want to talk to many other computers, such as a client talking to servers or a server serving requests from many clients.
+          </p>
+
+          <h3>Goroutines</h3>
+          <p>
+            Goroutines are threads, but they are not traditional operating system threads. They are a lightweight abstraction known as user-space threads or coroutines. Both enable concurrent execution, but goroutines are managed by the Go runtime rather than the OS kernel, allowing you to run millions of them at a fraction of the memory cost.
+          </p>
+          <ul>
+            <li>Memory footprint: a standard OS thread typically reserves 1 MB to 8 MB of memory. A goroutine starts at a tiny 2 KB and grows or shrinks dynamically as needed.</li>
+            <li>Creation and switching cost: creating an OS thread requires heavy interaction with the OS kernel, making it slow and expensive. Spinning up a goroutine only involves a memory allocation in the Go runtime, making it virtually instant.</li>
+            <li>Scheduling: OS threads are managed directly by the kernel via preemption. Goroutines are scheduled by Go's internal scheduler using an M:N model.</li>
+            <li>Each goroutine can send an RPC call.</li>
+          </ul>
+
+          <h3>Threads are important for</h3>
+          <ul>
+            <li>I/O concurrency</li>
+            <li>Parallelism</li>
+          </ul>
+
+          <h3>Thread challenges</h3>
+          <ul>
+            <li>Race conditions: what thread gets there first. Locks also bring their own problems.</li>
+            <li>Coordination: channels in Go help communicate between goroutines. Condition variables give a kick to a thread waiting for you. Wait groups help launch a known number of coroutines and wait for them to finish.</li>
+            <li>Deadlock</li>
+          </ul>
+
+          <h3>Web crawler</h3>
+          <ul>
+            <li>You start from a URL, find URLs in that page, and continue following them. Warning: it may become cyclic.</li>
+            <li>We want to do multiple fetches in parallel.</li>
+            <li>We also want to know when we are done fetching the pages.</li>
+            <li>DFS code: <a href="https://pdos.csail.mit.edu/6.824/notes/crawler.go">MIT crawler.go</a>.</li>
+          </ul>
+
+          <p>
+            The race detector looks at the execution. It is not static analysis.
+          </p>
+        </section>
+      </article>
+    </main>
+  </body>
+</html>
