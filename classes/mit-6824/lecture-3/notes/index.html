@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 3: GFS</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 3: GFS
+
+Why is it hard to design big storage systems?
+- Performance -&gt; sharding
+- Faults -&gt; Tolerance
+- Tolerance -&gt; Replication
+- Replication -&gt; Inconsistency
+- Strong consistency -&gt; Low performance
+
+Think of strong consistency as almost like talking to just one single-threaded server
+- If Client@1 writes 1 and Client@2 writes 2 at the same time, regardless of which one gets processed first, Client@3 and Client@4 should read the same value - either 1 or 2 - not both.
+
+Bad replication design:
+- Given two servers, writes should be sent to both servers to make them replicas of each other. Reads should be served from one of the servers and not both - otherwise it's not fault tolerant.
+- If Client@1 writes 1 and Client@2 writes 2 at the same time to both servers, we have no way of ensuring that the two servers process the request in the same order. We may end up with one server showing 1 and the other showing 2. If we are reading from server 1, we may get a value of 1. However, if a fault happens and it goes down, we have to read from 2 which has the value 2. Now all of a sudden, there is a change in the value being read.
+- To resolve this, we need more communication between the servers and some complexity.
+
+Google's problem:
+- Giant Youtube videos, log files from web servers - needed a lot of disks and high speed parallel access to use with things like MapReduce.
+- Global storage for all the data
+- Sharding - high aggregate throughput
+- Automatic failure recovery - no need for human intervention
+- Difficult to make it work with cross-data center replication with the big files. They kept it in one single data center
+- Internal use
+- Big sequential access - not random access.
+
+General structure:
+- The master knows about the chunk servers, stored in RAM and in disk.
+- K: file name -&gt; V: array of chunk handles (nv - nonvolatile/disk)
+- K: handle -&gt; list of chunk servers(v - volatile), version # (nv), primary(v) and lease expiration (v)
+- We use a log and a checkpoint to save to disk.
+
+Reading from GFS:
+- The client has a file name and byte offset. It converts the byte offset into a chunk index.
+- The client asks the GFS master: "For this file and chunk index, where is the chunk?"
+- The master responds with:
+  - the chunk handle (unique ID for that chunk)
+  - the locations of the chunkservers holding replicas of that chunk
+- The client caches this metadata.
+- The client chooses one of those replica chunkservers - typically a nearby one - and sends it the chunk handle and desired byte range.
+- That chunkserver reads the requested bytes from its local disk and sends the data directly to the client.
+- The master is not involved in transferring the file data.
+
+Writes to GFS:
+- The client asks the master for the chunk's replicas and which replica currently holds the primary lease.
+- If there is no valid primary, the master:
+  - Finds the replicas that have the latest chunk version.
+  - Increments the chunk's version number and records this metadata persistently.
+  - Grants a lease to one replica, making it the primary. The other replicas become secondaries.
+- The master returns the primary and secondary locations to the client.
+- The client sends the data to all replicas. This is just moving the bytes; the replicas do not modify the chunk yet.
+- Once all replicas have received the data, the client sends the write request to the primary.
+- The primary decides the order in which concurrent mutations should occur and applies the write locally.
+- The primary tells the secondaries: apply this write in this order.
+- Each secondary applies the write and responds to the primary.
+- The primary responds to the client. If a replica fails to perform the write, the operation is reported as an error, and the client can retry.
+
+Split brain -&gt; caused by network partition. Master cannot talk to the primary but the primary can talk to the clients.
+- We eliminate the possibility of assigning the primary to two chunks by giving the primary a lease with an expiry. If the lease expires, the primary will ignore or reject client requests.
+- If the master wants to assign a new primary, it has to wait for the lease to expire.
+
+Thinks to think about if you want to make GFS more consistent:
+- The primary needs to detect duplicate requests
+- If a primary tells a secondary to do something, the secondary should be able to execute it or it be taken out of the system if it's not working.
+- Secondary should not expose the data to the clients until the primary confirms that it is correctly done. Maybe do it in multiple phases -&gt; 2PC
+- If we have stale data or a scenario where the data across secondaries differs, we may need to send all the secondaries data to the primaries or have a lease system for the secondaries.</pre>
+</body>
+</html>
