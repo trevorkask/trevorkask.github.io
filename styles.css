@@ -227,6 +227,54 @@ h1 {
   color: var(--muted);
 }
 
+.course-directory {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.96rem;
+}
+
+.course-directory h2 {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  margin: 0 0 18px;
+  text-transform: uppercase;
+}
+
+.course-directory ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.course-directory > ul > li {
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+
+.course-directory .lecture-title {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.course-directory li ul {
+  margin-left: 18px;
+}
+
+.course-directory li li {
+  color: var(--muted);
+  margin-top: 5px;
+}
+
+.course-directory li li::before {
+  content: "- ";
+}
+
+.course-directory small {
+  color: #969da4;
+  font-size: 0.82em;
+}
+
 body.notes-page {
   background: #050505;
   color: #f5f5f0;
@@ -268,6 +316,12 @@ body.notes-page {
   color: #e7e3d4;
   font-size: 1.02rem;
   line-height: 1.72;
+}
+
+.notes-index {
+  display: grid;
+  gap: 12px;
+  font-family: Inter, system-ui, sans-serif;
 }
 
 .notes-content section + section {
