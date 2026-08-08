@@ -1,91 +1,40 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lecture 2: RPC & Threads | MIT 6.824 Notes</title>
-    <meta name="description" content="MIT 6.824 Lecture 2 RPC and threads notes by Trevor Kasuku.">
-    <link rel="stylesheet" href="../../../../styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
-  </head>
-  <body class="notes-page">
-    <header class="site-header notes-header">
-      <a class="brand" href="../../../../">Trevor Kasuku</a>
-      <nav aria-label="Primary navigation">
-        <a href="../../../../projects/">Projects</a>
-        <a href="../../../../blogs/">Blogs</a>
-        <a href="../../../">Classes</a>
-        <a href="https://github.com/trevorkask">GitHub</a>
-      </nav>
-    </header>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 2: RPC &amp; Threads</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 2: RPC &amp; THREADS
 
-    <main class="notes-shell">
-      <section class="notes-title">
-        <p class="eyebrow">MIT 6.824</p>
-        <h1>Lecture 2: RPC &amp; Threads</h1>
-        <p>Go, goroutines, RPC calls, coordination, and thread hazards.</p>
-      </section>
+Why Go?
+- Good support for threads and synchronization between threads
+- Convenient RPC package
+- Type safe and memory safe
 
-      <article class="notes-content">
-        <section>
-          <h2>Why Go?</h2>
-          <ul>
-            <li>Good support for threads and synchronization between threads.</li>
-            <li>Convenient RPC package.</li>
-            <li>Type safe and memory safe.</li>
-          </ul>
+Concurrency is important coz it is the case that a computer may want to talk to many other computers e.g a client talking to servers or a server serving requests from many clients.
 
-          <p>
-            Concurrency is important because a computer may want to talk to many other computers, such as a client talking to servers or a server serving requests from many clients.
-          </p>
-        </section>
+Goroutines are threads. They are not traditional operating system (OS) threads. They are a lightweight abstraction known as "user-space threads" or coroutines. While both enable concurrent execution, goroutines are managed by the Go runtime rather than the OS kernel, allowing you to run millions of them at a fraction of the memory cost.
+- Memory Footprint: A standard OS thread typically reserves 1MB to 8MB of memory. A goroutine starts at a tiny 2KB and grows or shrinks dynamically as needed.
+- Creation &amp; Switching Cost: Creating an OS thread requires heavy interaction with the OS kernel, making it slow and expensive. Spinning up a goroutine only involves a memory allocation in the Go runtime, making it virtually instant.
+- Scheduling: OS threads are managed directly by the kernel via preemption. Goroutines are scheduled by Go's internal scheduler using an M:N model
 
-        <section>
-          <h2>Goroutines</h2>
-          <p>
-            Goroutines are threads, but they are not traditional operating system threads. They are a lightweight abstraction known as user-space threads or coroutines. Both enable concurrent execution, but goroutines are managed by the Go runtime rather than the OS kernel, allowing you to run millions of them at a fraction of the memory cost.
-          </p>
-          <ul>
-            <li>Memory footprint: a standard OS thread typically reserves 1 MB to 8 MB of memory. A goroutine starts at a tiny 2 KB and grows or shrinks dynamically as needed.</li>
-            <li>Creation and switching cost: creating an OS thread requires heavy interaction with the OS kernel, making it slow and expensive. Spinning up a goroutine only involves a memory allocation in the Go runtime, making it virtually instant.</li>
-            <li>Scheduling: OS threads are managed directly by the kernel via preemption. Goroutines are scheduled by Go's internal scheduler using an M:N model.</li>
-            <li>Each goroutine can send an RPC call.</li>
-          </ul>
-        </section>
+Each goroutine will send a RPC call
 
-        <section>
-          <h2>Threads are important for</h2>
-          <ul>
-            <li>I/O concurrency</li>
-            <li>Parallelism</li>
-          </ul>
-        </section>
+Threads are important for:
+- I/O concurrency
+- Parallelism
 
-        <section>
-          <h2>Thread challenges</h2>
-          <ul>
-            <li>Race conditions: what thread gets there first. Locks also bring their own problems.</li>
-            <li>Coordination: channels in Go help communicate between goroutines. Condition variables give a kick to a thread waiting for you. Wait groups help launch a known number of coroutines and wait for them to finish.</li>
-            <li>Deadlock</li>
-          </ul>
-        </section>
+Thread challenges:
+- Race conditions - what thread gets there first. Locks also bring their own problems
+- Coordination - channels in go help communicate between goroutines. Condition variables - give a kick to a thread waiting for you. Wait groups - launching a known number of coroutines and waiting for them to finish.
+- Deadlock
 
-        <section>
-          <h2>Web crawler</h2>
-          <ul>
-            <li>You start from a URL, find URLs in that page, and continue following them. Warning: it may become cyclic.</li>
-            <li>We want to do multiple fetches in parallel.</li>
-            <li>We also want to know when we are done fetching the pages.</li>
-            <li>DFS code: <a href="https://pdos.csail.mit.edu/6.824/notes/crawler.go">MIT crawler.go</a>.</li>
-          </ul>
+Web Crawler - you start from a URL and find Urls in that page and continue following them. Warning: it may become cyclic.
+- We want to do multiple fetches in parallel.
+- We also want to know when we are done fetching the pages.
+- DFS code: https://pdos.csail.mit.edu/6.824/notes/crawler.go
 
-          <p>
-            The race detector looks at the execution. It is not static analysis.
-          </p>
-        </section>
-      </article>
-    </main>
-  </body>
+Race detector looks at the execution and not a static analysis</pre>
+</body>
 </html>

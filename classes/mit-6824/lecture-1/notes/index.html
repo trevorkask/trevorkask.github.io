@@ -1,121 +1,61 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lecture 1: Introduction | MIT 6.824 Notes</title>
-    <meta name="description" content="MIT 6.824 Lecture 1 introduction notes by Trevor Kasuku.">
-    <link rel="stylesheet" href="../../../../styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap" rel="stylesheet">
-  </head>
-  <body class="notes-page">
-    <header class="site-header notes-header">
-      <a class="brand" href="../../../../">Trevor Kasuku</a>
-      <nav aria-label="Primary navigation">
-        <a href="../../../../projects/">Projects</a>
-        <a href="../../../../blogs/">Blogs</a>
-        <a href="../../../">Classes</a>
-        <a href="https://github.com/trevorkask">GitHub</a>
-      </nav>
-    </header>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 1: Introduction</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 1: INTRODUCTION
 
-    <main class="notes-shell">
-      <section class="notes-title">
-        <p class="eyebrow">MIT 6.824</p>
-        <h1>Lecture 1: Introduction</h1>
-        <p>Why distributed systems exist, what makes them hard, and the MapReduce model.</p>
-      </section>
+Why distributed systems?
+- Parallelism for High performance - lots of CPUs, lots of memory
+- Fault tolerance - have two computers do the same thing, if one fails, cut over to the other one
+- Naturally spread out - bank A has a computer in NYC and another has another one in London and they need to communicate
+- Security - if there's code you don't trust, you split the computation and isolate them so they communicate over a narrow path
 
-      <article class="notes-content">
-        <section>
-          <h2>Why distributed systems?</h2>
-          <ul>
-            <li>Parallelism for high performance: lots of CPUs and lots of memory.</li>
-            <li>Fault tolerance: have two computers do the same thing; if one fails, cut over to the other one.</li>
-            <li>Naturally spread out: bank A has a computer in NYC and another in London, and they need to communicate.</li>
-            <li>Security: if there is code you do not trust, split the computation and isolate pieces so they communicate over a narrow path.</li>
-          </ul>
-        </section>
+Challenges:
+- Concurrency - Since a distribute system has many parts and the parts communicate concurrently, we have weird timing problems interleaving across the computers.
+- Partial failures - Since we have a network and multiple moving pieces, we can have very unexpected failure patterns. Some pieces stop working and other pieces continue working. Or maybe the computers are working but some part of the network is broken or unreliable. In a one computer setup, it either fails or it works.
 
-        <section>
-          <h2>Challenges</h2>
-          <ul>
-            <li>Concurrency: a distributed system has many parts communicating concurrently, which creates weird timing problems and interleavings across computers.</li>
-            <li>Partial failures: networks and multiple moving pieces create unexpected failure patterns. Some pieces stop working while others continue. Sometimes the computers are working but part of the network is broken or unreliable. In a one-computer setup, it either fails or works.</li>
-          </ul>
-        </section>
+Infrastructure/Abstractions:
+- Storage
+- Communication
+- Computation
 
-        <section>
-          <h2>Infrastructure and abstractions</h2>
-          <ul>
-            <li>Storage</li>
-            <li>Communication</li>
-            <li>Computation</li>
-          </ul>
-        </section>
+Implementations:
+- RPC, Threads, Concurrency Control (Locks)
 
-        <section>
-          <h2>Implementations</h2>
-          <ul>
-            <li>RPC</li>
-            <li>Threads</li>
-            <li>Concurrency control, such as locks</li>
-          </ul>
-        </section>
+Performance:
+- We can start by creating more servers to handle requests to the database. At some point, more servers won't increase the performance and the database will be the bottleneck. It's not straightforward to setup multiple databases.
 
-        <section>
-          <h2>Performance</h2>
-          <p>
-            We can start by creating more servers to handle requests to the database. At some point, more servers will not increase performance because the database becomes the bottleneck. It is not straightforward to set up multiple databases.
-          </p>
-        </section>
+Fault tolerance:
+- It's not uncommon to have one computer. They stay up for an amazing amount of time. However, if you have 1000 computers, even if each computer is expected to stay up for a year, with a 1000, you'll have 3 computer failures a day.
+- A computer could crash or hang. A cable could get stepped on.
+- We need to have infrastructure that hides the failure from the application users
+- Availability: Under certain kinds of failures, the system continues to operate as if there were no failure. For example a replicated service on two computers, you can still serve from one. If both fail, we can't offer the service any more.
+- Recoverability: If something wrong happens, it can be fixed by someone and come back up.
+- We need non-volatile storage like hard drives.
+- Replication: management of replication copies is tricky. If we have two servers each with supposedly identical copy of the system's data, the key problem is that the two replicas will accidentally drift out of sync and will stop being replicas. To avoid faults, we cannot put replicas close to each other like in the same rack. If someone steps on the cable, both replicas die. We therefore put replicas in different cities or countries.
 
-        <section>
-          <h2>Fault tolerance</h2>
-          <ul>
-            <li>It is not uncommon to have one computer stay up for an amazing amount of time. However, with 1000 computers, even if each computer is expected to stay up for a year, you will have about 3 computer failures a day.</li>
-            <li>A computer could crash or hang. A cable could get stepped on.</li>
-            <li>We need infrastructure that hides the failure from application users.</li>
-            <li>Availability: under certain kinds of failures, the system continues to operate as if there were no failure. For example, a replicated service on two computers can still serve from one. If both fail, we cannot offer the service anymore.</li>
-            <li>Recoverability: if something wrong happens, it can be fixed and come back up.</li>
-            <li>We need non-volatile storage like hard drives.</li>
-            <li>Replication: managing replica copies is tricky. If two servers each have a supposedly identical copy of the system's data, the key problem is that the replicas can drift out of sync. To avoid correlated faults, replicas should not be close to each other, such as in the same rack. If someone steps on a cable, both replicas might die. We therefore put replicas in different cities or countries.</li>
-          </ul>
-        </section>
+Consistency:
+- put(k,v) and get(k) -&gt; v
+- One thing to think about is that in a distributed system, we usually have more than one copy of the data. In one table of data, it is usually simple to reason about what these two functions mean.
+- If both servers have {k:1, v:20} and we have a put operation put(1, 21) updating both copies. Then one server crashes and we end up only updating one copy. One has 20 and the other has 21. It is possible that most gets end up returning 21 but one day weirdly, you end up getting 20 instead. Not very consistent.
+- Strongly consistent - has some version of a guarantee that get sees the most recent put
+- Weakly consistent - don't make such a guarantee and there are many flavors of this. We still like this because strongly consistent is expensive. Either the writer, the reader or both has to consult all copies and use the most recently saved value that they have seen. In a scenario where replicas are in different cities, this becomes very slow.
 
-        <section>
-          <h2>Consistency</h2>
-          <ul>
-            <li><code>put(k, v)</code> and <code>get(k) -> v</code>.</li>
-            <li>In a distributed system, there is usually more than one copy of the data. With one table of data, it is simple to reason about what these two functions mean.</li>
-            <li>If both servers have <code>{k: 1, v: 20}</code> and a <code>put(1, 21)</code> updates both copies, one server might crash after only one copy is updated. One replica has 20 and the other has 21. Most gets may return 21, but one day you could weirdly get 20 instead. Not very consistent.</li>
-            <li>Strong consistency: some version of a guarantee that <code>get</code> sees the most recent <code>put</code>.</li>
-            <li>Weak consistency: does not make that guarantee, and there are many flavors of it. We still like it because strong consistency is expensive. The writer, reader, or both must consult all copies and use the most recently saved value they have seen. When replicas are in different cities, this becomes slow.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>MapReduce</h2>
-          <ul>
-            <li>Google had the problem of analyzing pages and figuring out which ones were useful. Even back then, this was several terabytes. They also had to build an index of all pages, which is intensive and takes a lot of time, similar to sorting.</li>
-            <li>The map function runs on each input file and outputs a list of key-value pairs. For example, when counting word occurrences, the key is the word and the value is the count.</li>
-            <li>The reduce function sums up the findings from each output and returns one output.</li>
-            <li>The whole thing is called a job and contains several map and reduce tasks.</li>
-          </ul>
-
-          <pre><code>Map(K, V)
-  K is the file name and V is the file contents
-  Split V into words
-  For each word W:
-    emit("W", 1)
-
-Reduce(K, V)
-  K is the word and V is a vector of 1s
-  emit(len(V))</code></pre>
-        </section>
-      </article>
-    </main>
-  </body>
+MapReduce:
+- Google has the problem of analyzing pages and figuring out which ones are useful. Even back then, this was several terabytes. They also had to build an index of all pages, similar to sorting, this is intensive and takes a lot of time.
+- The map function runs on each of the input file and outputs a list of key-value pairs. For example, counting the number of word occurrences. The key will be the word and the value is the count.
+- The reduce function will sum up the findings from each output and have it as one output.
+- The whole thing is called a job and contains several map and reduce tasks.
+- Map(K,V)
+  - K is the file name and V is the file contents
+  - Split V into words
+  - For each word W:
+    - emit ("W", 1)
+- Reduce(K, V)
+  - K is the word and V is a vector of 1s.
+  - emit(len(V))</pre>
+</body>
 </html>
