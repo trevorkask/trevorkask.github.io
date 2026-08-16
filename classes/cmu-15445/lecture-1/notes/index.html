@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 1: Relational Model & Algebra</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 1: RELATIONAL MODEL &amp; ALGEBRA
+
+- Database - organized collection of inter-related data that models some aspect of the real world.
+- Database Management Systems (DBMS) - software that allows applications to store and analyze information in a database. A general DBMS supports the definition, creation, querying, update and administration of databases in accordance with the data model.
+- Data model - collection of concepts for describing the data in a database - Rules that define the types of things that could exist and how they relate.
+- Schema - description of a particular collection of data, using a given data model.
+
+Data models:
+- Relational
+- Key-value
+- Graph
+- Document/JSON/XML/Object
+- Wide column / Column family
+- Array (Vector, Matrix, Tensor)
+
+Why a relational model?
+- Structure: the definition of the database's relations and there contents independent of their physical representation
+- Integrity: ensure the database's contents satisfy constraints
+- Manipulation: Declarative AP for accessing and modifying a database's contents via relations(sets)
+
+- Logical schema - Schema, Constraints (SQL)
+- Physical Schema - Pages, Files, Extents
+- Relation - an unordered set that contain the relationship of attributes that represent entities.
+- Tuple - a set of attribute values in the relation.
+  - Values are (normally) atomic/scalar
+  - The special value NULL is a member of every domain (if allowed)
+- N-ary relation - Table with n columns
+- A relations's primary key uniquely identifies a single tuple. Some DBMSs automatically create an internal primary key if a table does not define one. DBMS can auto-generate unique primary keys via an identity column:
+  - IDENTITY (SQL Standard)
+  - SEQUENCE (PostgreSQL/ORACLE)
+  - AUTO_INCREMENT (MySQL)
+- A foreign key specifies than an attribute from one relation maps to a tuple in another relation.
+
+Constraints:
+- User-defined conditions that must hold for any instance of the database. Can validate data within a single tuple or across entire relation(s). DBMS prevents modifications that violate any constraint.
+- Unique key and referential (fkey) constraints are the most common.
+
+Data Manipulation Languages (DML):
+- The APU that a DBMS exposes to applications to store and retrieve information from a database.
+- Procedural: The query specifies the (high-level) strategy to find the desired result based on sets/bags. (Relational Algebra)
+- Non-Procedural (Declarative): The query specifies only what data is wanted and no how to find it. (Relational Calculus)
+
+Relational Algebra:
+- We have select, projection, union, intersection, difference, produce, join operations.
+- SELECT:
+  - Choose a subset of the tuples in a relation satisfying selection predicate.
+    - Predicate acted as a filter to retain only tuples that fulfill its qualifying requirement.
+    - Can combine multiple predicates using conjunctions / disjunctions.
+- PROJECTION:
+  - Generate a relation with tuples that contains only the specified attributes.
+    - Rearrange attribute's ordering.
+    - Remove unwanted attributes
+    - Manipulate values to create derived attributes.
+  - It is the part that follows SELECT. Like SELECT AGE ...
+- UNION:
+  - Generate a relation that contains all tuples that appear in either only one or both input relations, eliminating duplicates.
+    - Both relations must have the same attributes.
+- PRODUCT:
+  - Generate a relation that contains all possible combinations of tuples from the input relations.
+    - Input relations do not have to have the same attributes
+    - Output includes all the attributes from the input relations
+- JOIN:
+  - Generate a relation that contains all tuples that are a combination of two tuples (one from each input relation) with a common value for one or more attributes
+
+- Relational algebra defines an ordering of the high-level steps of how to compute a query
+- The relational model is independent of any query language implementation. SQL is the de facto standard (many dialects).</pre>
+</body>
+</html>
