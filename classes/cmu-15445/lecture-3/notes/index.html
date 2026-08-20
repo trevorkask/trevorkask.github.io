@@ -1,0 +1,166 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 3: Database Storage - Files, Pages, Tuples</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 3: DATABASE STORAGE - FILES, PAGES, TUPLES
+- The DBMS assumes that the primary storage location of the database is on non-volatile disk.
+- The DBMS’s components manage the movement of data between non-volatile and volatile storage.
+- Storage Hierarchy:
+    - CPU registers -&gt; CPU caches -&gt; DRAM -&gt; SSD -&gt; HDD -&gt; Network Storage
+    - CPU Registers are Faster, Smaller and Expensive. They progress to Network storage that are slower, larger and cheaper.
+- Volatile:
+    - Random access
+    - Byte-Addressable
+    - CPUR registers, CPU caches, and DRAM.
+- Non-volatile:
+    - Sequential access
+    - Block-addressable
+    - SSD, HDD, and Network storage
+- *-addresable means the granularity that we can access the data. If it is block-addressable and we want to access a byte, we have to retrieve the whole block. 
+* CPU - CPU registers and CPU caches
+* Memory - DRAM
+* Disk - SSD, HDD, and Network storage
+- Access times / Latency:
+    - 1ns - L1 Cache Ref - 1 sec
+    - 4ns - L2 Cache Ref - 4 sec
+    - 100ns - DRAM - 100 sec
+    - 16,000 ns - SSD - 4.4 hours
+    - 2,000,000 ns - HDD - 3.3 weeks
+    - 50,000,000 ns - Network storage - 1.5 years
+    - 1,000,000,000 ns - Tape Archives - 31.7 years
+- Sequential vs Random Access:
+    - Random access on non-volatile storage is almost always slower than sequential access.
+        - Random I/O = 80-100 μs
+        - Sequential I/O = 10-100 μs
+    - DBMS will want to maximize sequential access.
+        - Algorithms try to reduce number of writes to random pages so that data is stored in contiguous blocks.
+        - Allocating multiple pages at the same time is called an extent.
+- System design goals:
+    - Allow the DBMS to manage databases that exceed the amount of memory available 
+    - Reading/writing to disk is expensive, so it must be managed carefully to avoid large stalls and performance degradation.
+- Disk-oriented DBMS:
+    - We have a memory with a buffer pool with some slots. We also have a disk with a database file that has a directory and a number of pages. The pages also have headers
+    - The execution engine will try to retrieve page #2 and add it to the buffer pool. Then we send a pointer to the page in memory to the execution engine. It’ll stay there until the execution engine is done with it. The execution engine then interprets Page #2 layout and says it wants to update page #2. This is updated in the memory then the disk. 
+- Problem #1: How the DBMS represents the database in files on disk.
+- Problem #2: How the DBMS manages its memory and moves data back-and-forth from disk. To be addressed later.
+- File storage:
+    - The DBMS stores a database as one or more files on disk typically in a proprietary format. The OS does not know anything about the contents of these files.
+    - Early systems in the 80s and some enterprise DBMSs use custom filesystems on raw block storage but most newer DBMSs do not.
+- Storage manager:
+    - The storage manager is responsible for maintaining a database’s files.
+    - Some do their own scheduling for reads and writes to improve spatial and temporal locality of pages.
+    - It organizes the files as a collection of pages.
+        - Tracks data read/written to pages.
+        - Tracks the available space.
+    - A DBMS typically does not maintain multiple copies of a page on disk. This may happen above/below storage manager. Like file replicas &amp; RAID(below) or logical copies (above) 
+- Database pages:
+    - A page is a fixed-size block of data.
+        - It can contain tuples, metadata, indexes, log records…
+        - Most systems do not mix page types.
+        - Some systems require a page to be self-contained.
+    - Each page is given a unique identifier (page ID)
+        - A page ID could be unique per DBMS instance, per database, or per table.
+        - The DBMS uses an indirection layer to map page IDs to physical locations.
+    - There are three different notions of “pages” in a DBMS:
+        - Hardware page - usually 4KB - smallest atomic unit of data that the hardware can guarantee it can write to the storage device atomically.
+        - OS page - usually 4KB
+        - Database page - 512B -32KB - varies per system e.g 8KB for Postgres, 16KB for MySQL and 4KB for Oracle and SQLite
+    - Optimal database page size depends on environment, database contents, and expected workload.
+    - DBMSs specializing in read-heavy workloads tend to have larger page sizes (1MB or larger). Fetching a single page brings in many tuples that are needed for a query.
+    - DBMSs specializing in write-heavy workloads tend to have smaller page sizes (4-16KB). The systems must write entire page to disk even if only a small portion of it is modified.
+    - Different DBMSs manage pages in files on disk in different ways:
+        - Heap File Organization
+        - Tree File Organization
+        - Sequential/Sorted File Organization (ISAM)
+        - Hashing File Organization
+- Heap File:
+    - It is an unordered collection of pages with tuples that are stored in random order.
+        - Create / Get / Write ?Delete page
+        - Must also support iterating over all pages.
+    - Need additional metadata to track location of files and free space availability.
+- Page Directory:
+    - The DBMS maintains special pages that track the location of data pages in the database files. 
+        - One entry per database object. 
+        - Must make sure that the directory pages are in sync with the data pages.
+    - DBMS also keeps metadata about pages’ contents:
+        - Amount of free space per page
+        - List of free / empty pages
+        - Page type (data vs metadata)
+- Page Header:
+    - Every page contains a header of metadata about the page’s contents:
+        - Page size
+        - Checksum
+        - DBMS version
+        - Transaction visibility
+        - Compression / Encoding metadata
+        - Schema information
+        - Data summary / sketches
+- Page Layout:
+    - For any page storage architecture, we now need to decide how to organize the data inside of the page.
+        - We are still summing that we are only storing tuples in a row-oriented storage model
+        - We will also assume that each tuple fits in a single page
+    - We have three approaches: tuple-oriented, log-structured, and index-organized storage.
+- Tuple-oriented Storage:
+    - Strawman Idea: Keep track of the number of tuples in a page and then just append a new tuple to the end. 
+        - What happens if we delete a tuple? If we remove one piece, we have to scan through the tuples to find a free space (recovered after deleted).
+        - What happens if we have a variable-length attribute? This is a lot of work since we will have to move things around and pay the penalty again.
+    - Slotted pages (most common layout)
+        - The slot array maps slots to the tuples starting position offsets.
+        - The header keeps track of:
+            - The number of used slots
+            - The offset of the starting location of the last slot used
+        - When deleting a tuple, we can move another one to that position, we then update the offset and we don’t have to update other parts of the system like the indexes. 
+- Record IDs:
+    - The DBMS assigned each logical tuple a unique record identifier that represents its physical location in the database.
+    - Example: file id, page id, slot number
+    - Most DBMSs do not store ids in tuple.
+    - SQLite uses ROWID as the true primary key and stores them as a hidden attribute.
+    - Applications should never rely on these IDs to mean anything. The data can be moved around.
+- Tuple layout:
+    - A tuple is essentially a sequence of bytes prefixes with a header than contains metadata about it
+    - It is the job of the DBMS to interpret those bytes into attribute types and values
+    - The DBMS’s catalogs contain the schema information about tables that the system uses to figure out the tuple’s layout
+    - Tuple header:
+        - The metadata could be Visibility information (for concurrency control) and Bitmap for null values
+        - We do not need to store metadata about the schema
+    - Tuple data:
+        - Attributed are typically stored in the order that you specify them when you create the table for simplicity. However it may be more efficient to order them differently. 
+        - Remember: a computer word is a fixed-size data group handled by the CPU, often 16, 32, or 64 bits
+        - All attributed in a tuple must be word-aligned to enable the CPU to access it without any unexpected behavior or additional work. To get around this: 
+            - Padding - add empty bits after attributes to ensure the tuples’ physical layout to make sure they are aligned.
+            - Reordering - switch the order of attributed in the tuples’ physical layout to make sure they are aligned. May still need padding to fill remaining space.
+- Data representation: 
+    - INTEGER/BIGINT/SMALLINT/TINYINT - same as C/C++
+    - FLOAT/REAL vs NUMERIC/DECIMAL - IEEE-754 standard / fixed-point decimals
+    - VARCHAR/VARBINARY/TEXT/BLOB - header with length, followed by data bytes or pointer to another page/offset with data
+    - TIME/DATE/TIMESTAMP/INTERVAL - 32/64-bit integer of micro/milli seconds since Unix epoch (January 1st, 1970)
+    - Variable Precision Numbers:
+        - Inexact, variable precision numeric type that uses the “native” C/C++ types.
+        - These types are typically faster than fixed precision numbers because CPU ISA(Xeon, Arm) ’s have instructions /registers to support them
+        - But they do not guarantee exact values
+    - Fixed Precision Numbers:
+        - Numeric data types with arbitrary precision and scale. Use when rounding errors are unacceptable. Example: NUMERIC, DECIMAL
+        - Example: store in an exact, variable-length binary representation with additional metadata.
+        - Can be less expensive if the DBMS does not provide arbitrary precision e.g decimal point can be in a different position per value
+    - NULL data types:
+        - Choice A: Null column bitmap header - Store a bitmap in a centralized header that specifies what attributes are null. Most common approach in row-stores
+        - Choice B: Special values - Designate a placeholder value to represent NULL for a data type (e.g, INT32_MIN). Most common in column-stores.
+        - Choice C: Per attribute null flag - Store a flag that marks that a value is null. Must use more space than just a single bit because this messes up with word alignment. (BAD IDEA!!)
+    - Large values:
+        - Most DBMSs do not allow a tuple to exceed the size of a single page.
+        - To store values that are larger than a page, the DBMS uses separate overflow storage pages.
+            - Threshold: Postgres (&gt;2KB), MySQL(&gt;0.5 of the page), SQL server (&gt;size of the page)
+        - Potential optimizations:
+            - Overflow compression: compress the overflow pages using something like snappy of gzip
+            - German strings: in addition to the tie and offset of the tuple, we can store the prefix of the value. Good for string matching, comparisons, sorts and hash joins.
+    - External value storage:
+        - Some systems allow you to store a large value in an external file. Treated as a BLOB type.
+        - For example a URI to a movie file
+        - The DBMS cannot manipulate the contents of an external file.
+            - No durability protections
+            - No transaction protections</pre>
+</body>
+</html>
