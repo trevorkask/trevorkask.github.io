@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 2: Modern SQL + DBT</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 2: MODERN SQL + DBT
+
+- Data Manipulation Language (DML) - select, update, delete etc
+- Data Definition Language (DDL) - definition of a table, view, index etc
+- Data Control Language (DCL) - controlling who is allowed to see what data and so forth
+
+- Although the relational model is based on sets(unions, intersections and set theory), SQL uses bags. Bags have duplicates, Sets don't. SQL makes this decision because it requires extra work to remove duplicates. If you don't want duplicates, you can use key words like DISTINCT.
+
+Aggregates:
+- functions that return a single value from a bag of tuples:
+  - AVG(col) - return the average col value
+  - MIN(col) - return minimum col value
+  - MAX(col) - return  maximum col value
+  - SUM(col) - return sum of values in col.
+  - COUNT(col) - return # of values for col.
+- Aggregate functions can be(almost) only be used in the SELECT output list. e.g SELECT COUNT(login) FROM student WHERE ...
+- Output of other columns outside of an aggregate is undefined. Use ANY_VALUE(other column) to select it too.
+
+GROUP BY:
+- Project tuples into subsets and calculate aggregates against each subset.
+- GROUPING SETS: specify multiple groupings in a single query instead of using UNION ALL to combine the results of several individual GROUP BY queries. e.g GROUP BY GROUPING SETS.
+- HAVING: Filters results based on aggregation computation. Like a WHERE clause for a GROUP BY. e.g GROUP BY e.cid HAVING AVG(s.gpa) &gt; 3.9
+
+String operations:
+- LIKE provides string matching with special match operators:
+  - '%' matches any substring (including empty strings). LIKE '15-%'
+  - '_' match any one character. LIKE '%@c_'
+- SIMILAR TO allows for regular expression matching.
+- These follow the WHERE clause
+- SUBSTRING(string, index lower, index upper)
+- UPPER(string)
+- CONCAT or || or + depending on implementation.
+
+DATE/TIME operations:
+- Operations to manipulate and modify DAT/TIME attributes
+- Can be used in both output and predicates
+- Support/syntax varies wildly
+- SELECT NOW() -&gt; current date
+
+Output Control:
+- ORDER BY &lt;column&gt; [ASC|DESC] - sort tuples by the values in one or more of their columns
+- FETCH {FIRST|NEXT} &lt;#&gt; ROWS OFFSET &lt;#&gt; ROWS - limi # of tuples returned in output. Can set an offset to return a range. e.g FETCH FIRST 10 ROWS ONLY or FETCH FIRST 5 ROWS WITH TIES;
+
+Output redirection:
+- Store query results in another table. Table must not already be defined
+- Table will have the same number of columns with the same types as the input.
+- e.g SELECT DISTINCT cid INTO CourseIds FROM enrolled;
+
+Nested queries:
+- SELECT name FROM student WHERE sid IN (SELECT sid FROM enrolled)
+- ALL - the expression must be true for all rows in the subquery
+- ANY - the expression must be true for at least one row in the subquery
+- IN - equivalent to '=ANY()'
+- EXISTS - at least one row is returned without comparing it to an attribute in outer query
+
+Lateral joins:
+- The LATERAL operator allows a nested query to reference attributes in other nested queries that preceded it (according to position in the query).
+- One can think of it like a for loop that allows you to invoke another query for each tuple in a table.
+  - SELECT * FROM (SELECT 1 as x) as t1, LATERAL (SELECT t1.x+1 AS y) AS t2;
+  - For x in [1]: for y in [x+1]: print(x, y)
+
+Common Table Expressions (CTEs):
+- Specify a temporary result set that can then be referenced by another part of that query. Bind/alias output columns to names before the AS keyword.
+- Alternative to nested queries, views, and explicit temp tables.
+- WITH cteName (col1, col2) AS (SELECT 1, 2)
+- SELECT col1 + col2 FROM cteName;
+
+Window functions:
+- Performs a calculation across a set of tuples that are related to the current tuple, without collapsing them into a single output tuples, to support running totals, ranks, and moving averages.
+- Like an aggregation but tuples are not grouped into a single output tuples.
+- SELECT FUNC-NAME(...) OVER (...) FROM tableName;
+- FUNC-NAME is either an aggregation or special function
+- Special window functions:
+  - ROW_NUMBER() - # of the current row
+  - RANK() - order position of the current row
+- The OVER keyword specifies how to group together tuples when computing the window function
+- Use PARTITION BY to specify group
+- SELECT cid, sid, ROW_NUMBER() OVER (PARTITION BY cid) from enrolled</pre>
+</body>
+</html>
