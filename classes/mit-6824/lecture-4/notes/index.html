@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 4: Primary-Backup Replication</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 4: PRIMARY-BACKUP REPLICATION
+- What kind of failures is replication expected to deal with?
+  - Fail-stop failures of a single computer like unplugging the network connection of the server 
+  - Replication cannot help us cover bugs in our software/hardware
+  - Replication works best when the failures are independent and not coordinated.
+- Approaches to replication:
+  - State Transfer - if we have replicas of a server, the primary sends the copy of its entire state to its backup
+  - Replicated State Machine - all computer state is deterministic except when external state is applied. Like a packet arriving. They don’t send the state. They send those external inputs/events. This is usually more favored because the operations are smaller than the state. The schemes are more complicated and have some assumptions about how computers work.
+- Replication State Machine:
+  - What state? Most commonly it’s an application level replication like GFS and unlike low level stuff like VMware. We do not have to send things like interruptions to the backup.
+  - How closely synchronized the primary and the backups have to be?
+  - How to switch over to the backup when the primary fails?
+    - A smooth cutover is unattainable when the primary fails so we’ll definitely get anomalies
+  - How to add new replicas?
+- VMware Fault Tolerance:
+  - Instead of booting up an OS, they have a hypervisor called VMM (Virtual machine monitor) and it boots up multiple virtual computers with different OSes. 
+  - It requires at least two different machines to guard against hardware failures. The second machine will have the same virtual computers in the first one.
+  - If the first machine gets an interrupt signal, it sends it to the second machine. 
+  - The stream of events the primary sends to the backup are called log entries on the log channels.
+  - When the primary goes down, the backup will notice that it stopped receiving log entries from the primary. It stops waiting for the primary and goes live. Future events start going to the former backup machine.
+  - Some events are non-deterministic:
+    - Inputs - packet (data + interrupt that signals the packet is coming) - they have to be identical in the primary and backup
+    - Weird instructions that would yield different results - RNG or time of day instructions
+    - Multi-core instructions - the two computer hardwares would interleave the results of each core in different orders and it could cause some differences
+  - The log entry has the instruction number, type of instructions and the data.
+  - When a packet arrives from a NIC(Network Interface Card) and we weren’t running a virtual machine, the NIC would DMA(Direct Memory Access) the packet into the memory of the company it is attached to. The operating system may see this but we can’t let that happen. We won’t know what times the primary did or did not observe the network packet arriving. How it happens is: the NIC copies incoming packets into the private memory of the VMM and then the NIC interrupts the VMM and says the packet has arrived. The VMM will suspend the primary and remember what instruction number it suspended it at and copy the copy the entire packet into the primary’s memory while the primary is not looking and then the emulate a NIC interrupt into the primary and then send the packet and the instruction number to the backup. The backup then does the same process. This is the bounce buffer algorithm.
+- Output:
+  - Say the client sends an INCR instruction to the primary. It then increments the stored value 10 to 11. Then it is sent to the backup. Say the primary crashes after sending it back to the client but it was never sent to the backup. The backup then takes over and still has the value 10. If incremented later, it’ll be 11. 
+  - In the paper, the answer to this problem is using output rules. Basically, the primary is not allowed to send the output back to the client until the backup acknowledges it has received all log records up to this point. https://pdos.csail.mit.edu/6.824/papers/vm-ft.pdf
+  - New sequence with the output rule: the input arrives to the primary and is sent to the backup. Once the ACK comes back, then the primary can release the output.
+  - If the message from the primary to the backup is lost and the primary crashes, since the ACK was never sent by the backup, it must be the case that the crash happened before the primary sent the output to the client.
+  - It is a performance thorn coz the primary has to wait for the ACK from the backup. We could be smarter in the application level and notice that we don’t need to stall for read-only applications.
+  - Say the primary crashes after its output is released and the backup goes live and it processes the buffered log records and ends up processing the INCR record finally. Then sends the response to the client. We’ll end up sending the same response to the client twice. The backup and the primary also know of each others TCP connections and sequence numbers so if it happens that the backup ends up sending a duplicate output to the client, the client will be able to use a TCP sequence number to know that it is a duplicate
+- We could also have a scenario where the backup and the primary cannot talk to each other but they can talk to the client. They would both think the other person is dead. They are then no longer sending each other log records. This results in a split-brain.
+  - The way the VMware paper solves it is by using an external authority. The server send TEST-AND-SET requests and on the external service to acquire a flag. In order to go live, they maybe send TEST-AND-SET requests at the same time, the first one gets the result that the value used to be 0 now it’s 1. The second one arrives and sees that the value is 1 so it is not allowed to be primary. It kind of acts as a lock. This is also done when a server is legitimately down.
+  - The TEST-AND-SET becomes a single point of failure too and so it is made fault-tolerant as well.</pre>
+</body>
+</html>
