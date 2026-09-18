@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 6: Fault Tolerance - Raft I</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 6: FAULT TOLERANCE - RAFT I
+- Introduction:
+    - MapReduce replicates computation but has a master computer to do all the coordination for the computation
+    - GFS likewise replicates data and relies on a single master to know who the primary is for every piece of data
+    - VMware FT replicates computational write on primary and backup machines. It relies on a TEST-AND-SET server to do the cutover and know who the primary is
+    - Having a single entity decide who the primary is, is that it cannot disagree with itself. If there are multiple replicas of this entity, then they themselves can disagree.
+    - We want to avoid this split-brain scenario.
+- We have two clients (C1, C2) and two TEST-AND-SET servers (S1, S2):
+    - We don’t want to require each client to talk to all servers because if one of them is down, we’d have to wait for the response.
+    - We also don’t want it to only talk to one server. Say there is a network problem between region 1 and 2, C1 will be able to talk to S1 only and C2 will only be able to talk to S2. Both clients will think they’re the primary client. Essentially a network partition.
+    - In this scenario, we had two choices:
+        - Wait for both and cease to be fault-tolerant
+        - Wait for one and cease to be correct
+- Majority vote:
+    - If you have 2f + 1 servers, you can sustain f failures
+    - Majority overlap: Any two majorities of the same cluster must intersect.
+        - Suppose you have 5 Raft servers. A majority is 3.
+        - In one term, leader A gets votes from {1, 2, 3}.
+        - In a later term, leader B must also get 3 votes, maybe {3, 4, 5}.
+        - Those two majorities must overlap in at least one server: here, server 3.
+        - Server 3 is the overlap. It carries knowledge of that earlier log entry into the group electing the next leader.
+        - Raft then adds another rule: a server will not vote for a candidate whose log is less up-to-date than its own. So server 3can prevent a candidate that is missing that committed entry from becoming leader.
+        - That overlap is important because information from the old majority cannot be completely avoided by a new majority.
+- Raft is more closer to VSR (Viewstamped Replication) than Paxos is. https://www.cs.princeton.edu/courses/archive/fall11/cos518/papers/viewstamped.pdf
+- Raft is in the form of a library inside the application code in the replicas. 
+    - When the leader gets a request from a client, it asks the raft later to commit the log and let it know when it’s done.
+    - The raft on the leader then sends the log to the replicated logs and lets the application know that it is done then the application is allowed to execute the operation.
+    - Application code and the raft library code communicate through Go channels.
+- Purpose of the log:
+    - It’s a way for the leader to assign an order for each operation that comes in.
+    - It also stored tentative operations that we may need to retransmit or discard.
+    - If a server crashes and wants to rejoin, it uses the log persisted to the disk.
+- The logs may not be identical amongst the replicas. A leader could crash after only sending to some replicas. Raft forces the logs to be identical after a while.
+- Leader election:
+    - Why do we need a leader? It is possible to build an agreement system where a cluster of nodes agrees on the sequence of logs without any leader. Original Paxos didn’t have a leader. Raft has a leader because it’s easier to think about and it is faster to get a decision.
+    - Each term has at most one leader.
+    - If a leader crashes or drops a few heartbeats or is a bit slow, we have an election timer that increments the election term to start an election. It could be the case that there is a network partition and the previous leader still thinks it’s the leader.
+    - A candidate requires to get a majority of yes votes from a server to be the leader. Each server will only cast one yes vote per term.
+    - The server that wins the election will see that they got a majority of votes. Nobody else will know. This new leader will send heartbeats to the servers. The heartbeat does not necessarily say that they are the leader. Usually the leader sends an append entry to the logs of other servers. So the other servers will certainly know that someone won an election when they receive a heartbeat. The append entry also resets the election timer and suppress anyone from being a new candidate or starting a new election.
+    - This could fail by electing 0 leaders for a term. Maybe too many servers are dead or degraded. Another interesting way is that everybody is up but two leaders become candidates close enough in time that they split the vote between them.
+    - The way Raft minimizes the chance of split votes is by randomizing the election timers. The lucky server will be able to send requests for votes before the other ones are able to start. The election timer has to be at least as long as the expected interval between heartbeats. Since network packets could get dropped, the interval should even be x times more. The election timeout does need to be longer than the heartbeat interval. If it weren't, followers would start elections even while a healthy leader is actively sending heartbeats, causing constant unnecessary elections.
+    - Ideally, one should choose a new random number every time the election timer resets.
+    - Suppose the old leader is partitioned away and the majority in the other partition elects a new leader. Why won’t the old leader cause incorrect execution? 
+        - Say it receives a request from the client, it will attempt to send a log entry to the replicas but it won’t get a majority of them so it won’t be able to commit or execute the operation and it won’t respond to the client claiming it executed the request.
+- Weird scenarios:
+    - The old leader crashes while it has only sent append entries to some replicas
+    - The new leader crashes right after being elected</pre>
+</body>
+</html>
