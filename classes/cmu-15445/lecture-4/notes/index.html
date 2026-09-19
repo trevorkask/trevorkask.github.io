@@ -1,0 +1,201 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 4: Memory Management & Buffer Pools</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 4: MEMORY MANAGEMENT &amp; BUFFER POOLS
+
+- In this lecture, we address problem #2: how the DBMS manages memory and moves data back and forth from disk.
+
+Spatial Control:
+- Where to write pages on disk.
+- The goal is to keep pages that are used together often as physically close together as possible on disk.
+- Random I/O is more expensive than sequential I/O. This is less of a problem with modern disks, but with spinning hard drives the difference is much larger.
+
+Temporal Control:
+- When we bring something into memory, we want to do as much work on it as possible before going back to disk.
+- Decide when to read pages into memory and when to write them back to disk if they change.
+- The goal is to minimize stalls caused by reading data from disk.
+
+- On disk, we have a database file with pages. In memory, we have a buffer pool with frames. Both have directories.
+- If the execution engine does not find a page in memory, it goes to disk and brings the page into memory as a frame. The page-to-frame size ratio is 1:1.
+
+Other memory pools:
+- The DBMS needs memory for things other than tuples and indexes.
+- These other memory pools may not always be backed by disk. It depends on the implementation.
+  - Sorting and join buffers
+  - Query caches
+  - Maintenance buffers
+  - Log buffers
+  - Dictionary caches
+
+Buffer Pool Organization:
+- A memory region organized as an array of fixed-size pages. Each array entry is called a frame.
+- When the DBMS requests a page, it places an exact copy of that page into one of these frames.
+- Dirty pages are buffered and not written to disk immediately. This is a write-back cache.
+- The page table keeps track of pages that are currently in memory. It is usually a fixed-size hash table protected with latches to ensure thread-safe access.
+- Additional metadata per page:
+  - Dirty flag
+  - Pin/reference counter
+  - Access tracking information
+
+Locks vs. Latches:
+- Locks:
+  - Protect the database's logical contents from other transactions.
+  - Held for the transaction duration.
+  - Need to support rolling back changes.
+- Latches:
+  - Protect critical sections of the DBMS's internal data structures from other workers, such as threads.
+  - Held for the operation duration.
+  - Do not need to support rolling back changes.
+  - Usually implemented as a mutex.
+
+Page Table vs. Page Directory:
+- The page directory maps page IDs to page locations in the database files. All changes must be recorded on disk so the DBMS can find pages after restart.
+- The page table maps page IDs to copies of pages in buffer pool frames. This is an in-memory data structure that does not need to be stored on disk. It is ephemeral.
+
+Why not use the OS?
+- Paper: https://db.cs.cmu.edu/papers/2022/p13-crotty.pdf
+- Use OS memory mapping (mmap) to map the contents of a file into a program's address space. The OS loads pages lazily.
+- The OS is responsible for moving file pages in and out of memory, so the DBMS does not need to worry about it.
+- Scenario: A thread tries to access a page in virtual memory. It page faults, pauses while the OS fetches the page, the OS places it into physical memory, wires virtual memory to point to that physical memory, and then the process gets control back.
+- The challenge appears when we want to access a page but are out of physical memory. The OS chooses a page in physical memory to evict. The OS does not know anything about queries, SQL, transactions, or the contents of the files, so it does not know what should be evicted.
+- What if the DBMS allows multiple threads to access mmap files and one thread stalls on a page fault?
+
+Memory-mapped I/O problems when using the OS:
+1. Transaction safety: the OS can flush dirty pages at any time. You can prevent something from being evicted using mlock.
+2. I/O stalls: the DBMS does not know which pages are in memory. The OS will stall a thread on a page fault.
+3. Error handling: it is difficult to validate pages. Any access can cause a SIGBUS that the DBMS must handle. mmap makes the system less deterministic.
+4. Performance issues: the OS uses its own data structures, such as latches, and can cause TLB shootdowns.
+
+There are partial solutions to these problems:
+- madvise: tell the OS how you expect to read certain pages.
+- mlock: tell the OS that memory ranges cannot be paged out.
+- msync: tell the OS to flush memory ranges to disk.
+- Using these system calls to get the OS to behave correctly is just as onerous as managing memory yourself. MongoDB used mmap when it IPO'd, and it was still very hard for them to manage.
+
+The DBMS almost always wants to control memory itself and can do a better job than the OS:
+- Flushing dirty pages to disk in the correct order.
+- Specialized prefetching.
+- Buffer replacement policy.
+- Thread/process scheduling.
+
+Buffer replacement policies:
+- When the DBMS needs to free up a frame to make room for a new page, it must decide which page to evict from the buffer pool.
+- Goals:
+  - Correctness: evict pages that are less likely to be needed soon.
+  - Accuracy.
+  - Speed: the replacement algorithm should not take longer than disk I/O.
+  - Metadata overhead: buffer pool metadata should be minimal; otherwise, we could use that space to store more data in memory.
+
+1. Least Recently Used (LRU) - 1965
+- Maintain a timestamp of when each page was last accessed. When the DBMS needs to evict a page, select the one with the oldest timestamp.
+- Keep the pages in sorted order to reduce search time during eviction.
+
+2. Clock - 1969
+- Approximation of LRU that does not need a separate timestamp per page.
+- Each page has a reference bit. It only goes up to 1. It is not a counter.
+- When a page is accessed, set its bit to 1.
+- Organize pages in a circular buffer with a "clock hand" that sweeps over pages in order:
+  - As the hand visits each page, check whether its bit is set to 1.
+  - If yes, set it to 0. If no, evict the page.
+
+- LRU and Clock replacement policies are susceptible to sequential flooding.
+  - A query performs a sequential scan that reads every page in a table one or more times, such as nested-loop joins.
+  - This pollutes the buffer pool with pages that are read once and then never again.
+- In OLAP workloads, the most recently used page is often the best page to evict.
+
+3. Least Frequently Used (LFU) - 1971
+- LRU and Clock only track when a page was last accessed, not how often a page is accessed.
+- To identify popular pages, maintain an access count for each page and evict the page with the lowest count.
+- LFU introduces more problems:
+  - Logarithmic implementation complexity relative to cache size.
+  - Ignores time and accumulates stale pages with high frequency counts that may no longer be relevant.
+
+4. LRU-K - 1993
+- Track the history of the last K accesses to each page as timestamps and compute the interval between subsequent accesses. This can distinguish between reference types.
+- Use this history to estimate the next time that page will be accessed. Replace the page with the oldest Kth access. This balances recency and frequency of access.
+- Maintain an in-memory ghost cache for recently evicted pages to prevent them from always being evicted.
+- Eviction policy:
+  - Current time - Kth last access = backward distance.
+  - Use the oldest access time to break ties.
+- We use a logical clock because the wall clock can be affected by time zones and daylight saving time.
+
+5. MySQL Approximate LRU-K
+- Single LRU linked list with two entry points: "old" and "young".
+- New pages are always inserted at the head of the old list.
+- If a page in the old list is accessed again, insert it at the head of the young list. This prevents it from being evicted soon.
+
+6. ARC: Adaptive Replacement Cache - 2003
+- Developed by IBM Research and implemented in PostgreSQL.
+- Supports both recency (LRU) and frequency (LFU) by maintaining two lists and adjusting their sizes based on workload access patterns.
+- Maintains ghost lists to remember recent evictions and adapt quickly:
+  - Recent list (T1): holds pages that have been accessed once recently.
+  - Recent ghost list (B1): history of pages recently evicted from T1, meaning recency misses.
+  - Frequent list (T2): holds pages that have been accessed at least twice.
+  - Frequent ghost list (B2): history of pages recently evicted from T2, meaning frequency misses.
+  - Target size parameter (p): adaptively adjusts how much to favor recency (T1) versus frequency (T2).
+- Lookup protocol:
+  - A page can only exist in one list at a time.
+  - The DBMS checks both lists upon lookup to determine whether the page is available.
+  - Page found in T1: the page is promoted from T1 to T2, meaning it becomes "frequent".
+  - Page found in T2: the page remains in T2, reinforcing its "frequent" status.
+  - Cache miss, page found in B1 (ghost of T1): increase target size p to favor more recency pages, then move the page into T2 because it is now accessed again.
+  - Cache miss, page found in B2 (ghost of T2): decrease target size p to favor more frequency pages, then move the page into T2.
+  - Cache miss, page not in cache or ghost lists: if T1 + B1 is full, evict from B1 or T1. If T2 + B2 is full, evict from B2 or T2. Insert the new page into T1.
+
+Better Policies:
+- Localization:
+  - The DBMS chooses which pages to evict on a per-query basis. This minimizes pollution of the buffer pool from each query.
+  - Keep track of the pages that a query has accessed.
+  - Example: PostgreSQL assigns a limited number of buffer pool pages to a query and uses them as a circular ring buffer.
+- Priority Hints:
+  - The DBMS knows the context of each page during query execution.
+  - It can provide hints to the buffer pool about whether a page is important.
+
+- Expensive enterprise systems like Oracle have sophisticated buffer replacement algorithms, and that is one thing that separates them from open-source DBMSs.
+
+Dirty Pages:
+- A dirty page means that some part of the system has modified it since we put it in memory. We cannot just throw it away; we have to write it back to disk before we can reuse the frame.
+- Fast path: if a page in the buffer pool is not dirty, the DBMS can simply drop it.
+- Slow path: if a page is dirty, the DBMS must write it back to disk to ensure that its changes are persisted.
+- There is a trade-off between fast evictions and writing dirty pages that may not be read again in the future.
+
+Background writing:
+- The DBMS periodically walks through the page table and preemptively writes dirty pages to disk.
+- This is also called page cleaning or buffer flushing.
+- When a dirty page is safely flushed, the DBMS can either evict the page or reset its dirty flag.
+- The system must be careful not to write dirty pages before their log records are written.
+- High-end enterprise systems have thresholds and background mechanisms where you can configure how aggressive flushing is. Other systems may use a schedule. PostgreSQL does it when around 30 pages in memory have been modified.
+
+- OS/hardware tries to maximize disk bandwidth by reordering and batching I/O requests, but it does not know which I/O requests are more important than others.
+- Many DBMSs tell you to switch Linux to use the deadline or noop (FIFO) scheduler, such as MySQL.
+
+Disk I/O scheduling:
+- The DBMS maintains internal queues to track page read/write requests from the entire system.
+- It computes priorities based on several factors:
+  - Sequential vs. random I/O
+  - Critical path task vs. background task
+  - Table vs. index vs. log vs. ephemeral data
+  - Transaction information
+  - User-based SLAs
+- The OS does not know these things and will get in the way of our beautiful DBMS.
+
+OS page cache:
+- Most disk operations go through the OS API. Unless the DBMS tells it not to, the OS maintains its own filesystem cache, also known as the page cache or buffer cache. This is wasteful.
+- Most DBMSs use direct I/O (O_DIRECT) to bypass the OS cache:
+  - Redundant copies of pages.
+  - Different eviction policies.
+  - Loss of control over file I/O.
+- PostgreSQL famously relies on the OS page cache. They are trying to switch to direct I/O. In PostgreSQL 18, they use asynchronous I/O.
+
+fsync problems:
+- If the DBMS calls fwrite, what happens?
+- If the DBMS calls fsync, what happens?
+- If fsync fails (EIO), what happens?
+  - Linux marks the dirty pages as clean.
+  - If the DBMS calls fsync again, Linux tells you that the flush was successful. Since the DBMS thought the OS was its friend, it assumed the write was successful. Don't do this. This was called fsync-gate.</pre>
+</body>
+</html>
