@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 5: Log-Structured Database Storage</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 5: LOG-STRUCTURED DATABASE STORAGE
+
+Buffer pool optimization techniques:
+- Multiple buffer pools
+- Prefetching
+- Scan sharing
+
+MULTIPLE BUFFER POOLS
+- The DBMS does not always have a single buffer pool for the entire system.
+  - Multiple buffer pool instances
+  - Per-database buffer pool
+  - Per-page type buffer pool
+- Partitioning memory across multiple pools helps reduce latch contention and improve locality.
+  - Avoids contention on LRU tracking metadata.
+  - IBM DB2 goes further: you can have a buffer pool for a table, index, etc. MySQL is a bit simpler.
+- Approach 1: Object ID
+  - Embed an object identifier in record IDs and maintain a mapping from objects to specific buffer pools.
+- Approach 2: Hashing
+  - Hash the page ID to select which buffer pool to access.
+
+PREFETCHING
+- The DBMS can prefetch pages based on a query plan.
+  - Examples: sequential scans vs. index scans.
+- Some DBMSs prefetch to fill empty frames on startup.
+
+SCAN SHARING
+- Allow multiple queries to attach to a single cursor that scans a table.
+  - Also called synchronized scans.
+  - This is different from result caching.
+- Examples:
+  - Fully supported in DB2, MSSQL, Teradata, and PostgreSQL.
+  - Oracle only supports cursor sharing for identical queries.
+
+PAGE LAYOUT
+- For any page storage architecture, we need to decide how to organize the data inside the page.
+  - We are still assuming that we are only storing tuples in a row-oriented storage model.
+  - We will also assume that each tuple fits in a single page.
+- Approach #1: Tuple-oriented storage - done.
+- Approach #2: Index-organized storage - today.
+- Approach #3: Log-structured storage - today.
+
+TUPLE-ORIENTED STORAGE: READS
+- Get an existing tuple using its record ID:
+  - Check the page directory to find the location of the page.
+  - Retrieve the page from disk if it is not in memory.
+  - Find the offset in the page using the slot array.
+- The DBMS relies on indexes to find individual tuples because tables are inherently unsorted.
+- But what if the DBMS could keep tuples sorted automatically using an index? This is index-organized storage.
+
+INDEX-ORGANIZED STORAGE
+- The DBMS stores a table's tuples as the value of an index data structure.
+  - Still uses a page layout that looks like a slotted page.
+  - Tuples are typically sorted in the page based on key.
+- In the page header, we have a key-to-offset array mapping keys to specific tuples.
+
+TUPLE-ORIENTED STORAGE: WRITES
+- Insert a new tuple:
+  - Check the page directory to find a page with a free slot.
+  - Retrieve the page from disk if it is not in memory.
+  - Check the slot array to find empty space in the page that will fit the tuple.
+- Update an existing tuple using its record ID:
+  - Check the page directory to find the location of the page.
+  - Retrieve the page from disk if it is not in memory.
+  - Find the offset in the page using the slot array.
+  - If the new data fits, overwrite the existing data. Otherwise, mark the existing tuple as deleted and insert the new version in a different page. This is expensive.
+
+TUPLE-ORIENTED STORAGE
+- Tuple storage is great for reads, okay for inserts, and terrible for updates.
+- Problems:
+  - Fragmentation: pages are not fully utilized because of unusable space and empty slots.
+  - Useless disk I/O: the DBMS must fetch entire pages to update one tuple.
+  - Random disk I/O: the worst case when updating multiple tuples is that each tuple is on a separate page.
+- What if the DBMS cannot overwrite data in pages and can only create new pages?
+  - Examples: HDFS, Google Colossus, S3 Express.
+
+LOG-STRUCTURED STORAGE
+- Instead of storing tuples in pages and updating them in place, the DBMS maintains a log that records changes to tuples.
+  - Each log entry represents a tuple PUT or DELETE operation.
+  - Originally proposed as log-structured merge trees (LSM trees) in 1996.
+- The DBMS applies changes to an in-memory data structure (MemTable) and then writes the changes sequentially to disk as sorted-string tables (SSTables).
+- When the MemTable is full, we take the leaf nodes and send them to the SSTable. They are sorted from lowest to highest key. We then merge SSTables to form bigger ones.
+- When reading MemTables, we can have a SummaryTable that has metadata about what is in each MemTable. The SummaryTable has the min/max key per SSTable and a key filter per level.
+- Key-value storage appends log records on disk to represent changes to tuples (PUT, DELETE).
+  - Each log record must contain the tuple's unique identifier.
+  - PUT records contain the tuple contents.
+  - DELETE records mark the tuple as deleted.
+- As the application changes the database, the DBMS appends log records to the end of the file without checking previous log records.
+- Log-structured storage managers are more common today than in previous decades. This is partly due to the proliferation of RocksDB. It was initially LevelDB. The first thing Meta did after forking LevelDB was get rid of mmap.
+- Downsides:
+  - Write amplification.
+  - Compaction is expensive.
+- Upside: it is ideal for write-heavy workloads because it maximizes sequential disk I/O.
+
+LOG-STRUCTURED COMPACTION
+- Periodically compact data files to reduce wasted space and speed up reads.
+  - Keep the latest values for each key using a sort-merge algorithm. Use a cursor in each SSTable, find the smaller value, add it to the final SSTable, and advance the cursor while keeping the previous one.
+- We do not want to compact too often because it may affect query execution.
+
+LOG-STRUCTURED COMPACTION STRATEGIES
+- Approach #1: Leveled Compaction
+  - Data is organized into levels with an SSTable size limit per level.
+  - SSTables in a level are non-overlapping on key ranges, except Level 0.
+  - Level 0 contains SSTables recently flushed from memory and can contain overlapping ranges.
+  - Compactions merge a file from one level into the next lower level while maintaining sorted, non-overlapping key ranges. The size of SSTables grows with the level.
+  - Better for read-heavy workloads, mainly because the lower levels have sorted keys.
+- Approach #2: Universal Compaction
+  - SSTables reside in a single "universal" level, meaning there is no multi-level hierarchy.
+  - The DBMS triggers compaction when too many SSTables overlap in key ranges or exceed size thresholds.
+  - Better for insert-heavy workloads and time-oriented queries. It is good for getting more recent data, like today's temperature.</pre>
+</body>
+</html>
