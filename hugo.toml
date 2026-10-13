@@ -21,9 +21,14 @@ url = "/blogs/"
 weight = 3
 
 [[menu.main]]
+name = "Bookshelf"
+url = "/bookshelf/"
+weight = 4
+
+[[menu.main]]
 name = "Classes"
 url = "/classes/"
-weight = 4
+weight = 5
 
 [markup]
   [markup.tableOfContents]
@@ -32,7 +37,7 @@ weight = 4
     startLevel = 2
 
 [params]
-  description = """I am a distributed systems engineer at Apple working in a platform/infra team. Our platform is data-intensive and supports ~3B customers. My core skills are in distributed systems algorithms, multi-threaded programming, and data storage systems.
+  description = """Working on making computers talk to each other.
 
-This site is a portfolio of my advanced coursework, projects built from scratch (as Karpathy intended), and blogs explaining my understanding of the concepts I have learned with no jargon (as Feynman intended).
+This site is a portfolio of my advanced coursework, projects built from scratch, and blogs explaining my understanding of the concepts I have learned with no jargon.
 """
