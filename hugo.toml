@@ -37,7 +37,7 @@ weight = 5
     startLevel = 2
 
 [params]
-  description = """Working on making computers talk to each other.
+  description = """Working on making 1000 computers agree on what just happened
 
 This site is a portfolio of my advanced coursework, projects built from scratch, and blogs explaining my understanding of the concepts I have learned with no jargon.
 """
