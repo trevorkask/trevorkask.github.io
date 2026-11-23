@@ -87,7 +87,7 @@
         - Otherwise it must rebuild the table if it needs to grow/shrink in size
     - Dynamic hash tables incrementally resize themselves as needed
         - Chained hashing
-            - Maintain a lined list of buckets for each slot in the hash table. Similar to java.
+            - Maintain a linked list of buckets for each slot in the hash table. Similar to java.
             - Resolve collisions by placing all elements with the same hash key into the same bucket.
                 - To determine whether an element is present, hash to its bucket and scan for it
                 - Insertions and deletions are generalizations of lookups.
@@ -95,13 +95,17 @@
             - Its approach splits buckets incrementally instead of letting the linked list grow forever.
             - Multiple slot locations can point to the same bucket chain.
             - Reshuffle bucket entries on split and increase the number of bits to examine. Data movement is localized to just the split chain
+            - When a bucket overflows, we can double the size of the bucket. This may need us to update the global counter
         - Linear hashing (not to be confused with Linear probe hashing)
             - The hash table maintains a pointer that tracks the next bucket to split
                 - When any bucket overflows, split the bucket at the pointer location
                 - The bucket being split may not be the one that overflowed, contrary to Extensible Hashing
-            - Use multiple hashes to find the right bucket for a given key.
+            - Use multiple hashes to find the right bucket for a given key. If the first one misses, we use the next hash function that may have 2n mod compared to n mod.
             - Can use different overflow criterion:
                 - Space utilization
-                - Average length of overflow chains</pre>
+                - Average length of overflow chains
+            - Resizing:
+                - Splitting buckets based on the split pointer will eventually get to all overflowed buckets. When the pointer reaches the last slot, remove the first hash function and move pointer back to beginning.
+                - If the “highest” bucket below the split pointer is empty, the hash table could remove it and move the split pointer in reverse direction</pre>
 </body>
 </html>
