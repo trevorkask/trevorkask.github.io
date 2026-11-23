@@ -1,0 +1,134 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 6: Column-Store Databases</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 6: COLUMN-STORE DATABASES
+- In the last class we saw that log-structure and index-organized storage are ideal for write-heavy (INSERT/UPDATE/DELETE) workloads.
+- But the most important query for some workloads may be read (SELECT) performance…
+- Database workloads:
+    - On-Line Transaction Processing (OLTP) - fast operations that only read/update a small amount of data each time.
+    - On-Line Analytical Procession (OLAP) - complex queries that read a lot of data to compute aggregates. We execute these workloads on the data you have collected from your OLTP application.
+    - Hybrid Transaction + Analytical Processing - both on the same database instance
+- In a graph of operation complexity and workload focus:
+    - OLAP = read-heavy workloads and complex operations
+    - OLTP = write-heavy workloads and simple operations
+- Observation: the relational model does not specify that the DBMS must store all a tuple’s attributes together in a single page. This may not actually be the best layout for some workloads…
+- STORAGE MODELS:
+    - A DBMS’s storage model specifies how it physically organizes tuples on disk and in memory.
+        - Can have different performance characteristics based on the target workload (OLTP vs OLAP)
+        - Influences the design choices of the DBMS
+    - Choice 1: N-ary Storage Model (NSM)
+    - Choice 2: Decomposition Storage Model (DSM)
+    - Choice 3: Hybrid Storage Model (PAX)
+- N-Ary Storage Model (NSM)
+    - The DBMS stores (almost) all attributes for a single tuple contiguously in a single page. Also commonly known as a row store.
+    - Ideal for OLTP workloads where queries are more likely to access individual entities and execute write-heavy workloads.
+    - NSM database page sizes are typically some constant multiple of 4KB hardware pages.
+    - Physical organization:
+        - A disk-oriented NSM system stores a tuple’s fixed-length and variable-length attributes contiguously in a single slotted page.
+        - The tuple’s record id (page#, slot#) is how the DBMS uniquely identifies a physical tuple.
+    - In OLAP, we end up fetching more row data(all attributes) that we do not need and loaded into memory
+    - Advantages:
+        - Fast inserts, updates and deletes
+        - Good for queries that need the entire tuple (OLTP)
+        - Can use index-oriented physical storage for clustering
+    - Disadvantages:
+        - Not good for scanning large portions of the table and/or a subset of the attributes
+        - Terrible memory locality in access patterns
+        - Not ideal for compression because of multiple value domains within a single page
+- Decomposition Storage Model (DSM)
+    - Store a single attribute for all tuples contiguously in a block of data. Also known as column store.
+    - Ideal for OLAP workloads where read-only queries perform large scans over s subset of the table’s attributes.
+    - DBMS is responsible for combining/splitting a tuple’s attributes when reading/writing
+    - Physical organization:
+        - Store attributes and metadata (e.g nulls) in separate arrays of fixed-length values. Most systems identify unique physical tuples using offsets into these arrays. Need to handle variables-length values
+        - Maintain separate pages per attribute with a dedicated header area for metadata about entire column
+    - Tuple identification:
+        - Choice 1: Fixed-length offsets - each value is the same length for an attribute
+        - Choice 2: Embedded tuple ids - each value is stored with its tuple id in a column (Don’t do this - need to store an extra number and create an index for it)
+    - Variable-length data:
+        - Padding variable-length fields to ensure they are fixed-length is wasteful, especially for large attributes.
+        - A better approach is to use dictionary compression to convert repetitive variable-length data into fixed-length values (typically 32-bit integers)
+    - Advantages:
+        - Reduces the amount of waster I/O per query because the DBMS only reads the data that it needs
+        - Faster query processing because of increased locality and cached data reuse.
+        - Better data compression.
+    - Disadvantages:
+        - Slow for point queries, inserts, updates and deletes because of tuple splitting/stitching/reorganization.
+- Observation: 
+    - OLAP queries almost never access a single column in a table by itself. At some point during jury execution, the DBMS must get other columns and stitch the original tuple back together.
+    - But we still need to store data in a columnar format to get the storage + execution benefits
+    - We need a columnar scheme that store attributes separately but keeps each tuple’s attributes physically.
+- Pax Storage Model (PAX)
+    - This is a hybrid storage model that vertically partitions attributes within a database page.
+    - The goal is to get the benefit of faster processing on columnar storage while retaining the spatial locality benefits of row storage. 
+    - Physical organization:
+        - Horizontally partition data into row groups. Then vertically partition their attributes into column chunks.
+        - Global metadata directory contains offsets to the file’s row groups. This is stored in the footer if the file is immutable.
+        - Each row group contains its own metadata header about its contents.
+- Observation:
+    - I/O is the main bottleneck if the DBMS fetches data from disk during query execution.
+    - The DBMS can compress pages to increase the utility of the data moved per I/O operation.
+    - Key trade-off is speed vs compression ratio:
+        - Compressing the database reduces DRAM requirements
+        - It may decrease CPU costs during query execution
+- Database compression:
+    - Goal 1: Must produce fixed-length values - only exception is var-length data stored in separate pool
+    - Goal 2: Postpone decompression for as long as possible during query execution. Also known as late materialization.
+    - Goal 3: Must be a lossless scheme. People don’t like losing data. Any lossy compression must be performed by application. Lossy may be needed if let’s say we collected a lot of data due to high granularity and we don’t need it that much later on
+- Compression granularity:
+    - Choice 1: Block-level - compress a block of tuples for the same table
+    - Choice 2: Tuple-level - compress the contents of the entire tuple (NSM-only)
+    - Choice 3: Attribute-level - compress a single attribute within one tuple (overflow). Can target multiple attributes for the same tuple.
+    - Choice 4: Column-level - compress multiple values for one or more attributes stored for multiple tuples (DSM-only)
+- Naive compression:
+    - Compress data using a general purpose algorithm. Scope of compression is based on input provided.
+    - Considerations:
+        - Computational overhead
+        - Compress vs decompress speed
+    - Compressed data is an opaque box to the DBMS and thus the system must decompress data first before it can be read and (potentially) modified. This limits the scope of the compression scheme.
+    - These schemes also do not consider the high-level meaning or semantics of the data.
+- Observation:
+    - Ideally the DBMS can operate on compressed data without decompressing it first.
+    - For this there is some dictionary encoding where a value is encoding and mapped to its encoding. So if it is a SELECT query, it will use the encoded value without telling you
+- Columnar compression:
+    - Run-length Encoding
+        - Compress runs of the same value in a single column into triplets:
+            - The value of the attribute
+            - The start position in the column segment
+            - The number of elements in the run
+        - Requires the columns to be sorted intelligently to maximize compression opportunities 
+        - The RLE triplet could have [value, offset, length]
+    - Bit-packing Encoding
+        - If the values for an integer attribute is smaller than the range of its given data type size, then reduce the number of bits to represent each value.
+        - Use bit-shifting tricks to operate on multiple values in a single word.
+        - What if someone adds a new value that exceeds the shrunk size?
+        - Patching/Mostly Encoding:
+            - A variation of bit packing for when an attribute’s values are “mostly” less than the largest size, store them with smaller data type.
+            - The remaining values that cannot be compressed are stored in their raw form
+    - Bitmap Encoding
+        - Store a separate bitmap for each unique value for an attribute where an offset in the vector corresponds to a tuple.
+        - The i’th position in the bitmap corresponds to the i’th tuple in the table
+        - Typically segmented into chunks to avoid allocating large blocks of contiguous memory
+        - Only practical if the value cardinality is low. Some DBMSs provide bitmap indexes
+    - Delta/Frame-of-reference Encoding
+        - Recording the difference between values that follow each other in the same column.
+        - Store base value in-line or in a separate look-up table.
+        - Combine with RLE to get even better compression ratios.
+        - Frame-of-reference variant: Use global min value
+    - Incremental Encoding 
+    - Dictionary Encoding - most popular and the one we observed
+        - Replace frequent value with smaller fixed-length codes and then maintain a mapping (dictionary) from the codes to the original values. 
+            - Typically, one code per attribute value. 
+            - Most widely used native compression scheme in DBMSs.
+        - The ideal dictionary scheme supports fast encoding and decoding for both point and range queries.
+            - Encode/Locate: For a given uncompressed value, convert it into its compressed form.
+            - Decode/Extract: For a given compressed value, convert it back into its original form
+        - Order-preserving: the encoded values need to support the same collation as the original values
+            - SELECT * FROM users WHERE name LIKE ‘And%’ changes to SELECT * FROM users WHERE name BETWEEN 10 and 20. These values are sorted in the dictionary.
+            - Some queries like DISTINCT only need to access the dictionary</pre>
+</body>
+</html>

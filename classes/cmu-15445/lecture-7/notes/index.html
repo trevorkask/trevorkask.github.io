@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 7: Database Hash Tables</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 7: DATABASE HASH TABLES
+- We need data structures for:
+    - Internal metadata
+    - Core data storage
+    - Temporary data structures
+    - Table indexes
+- Design decisions:
+    - Data organization: how we layout data structure in memory/pages and what information to store to support efficient access
+    - Concurrency: how to enable multiple threads to access the data structure at the same time without causing problems 
+- HASH TABLES:
+    - A hash table implements an unordered associative array that maps keys to values.
+    - It uses a hash function to compute an offset into this array for a given key, from which the desired value can be found.
+    - Space complexity: O(n)
+    - Time complexity: O(1) average, O(n) worst - in databases, we care about constants so we may prefer a better O(1) over another O(1)!
+    - Static hash table:
+        - Allocate a giant array that has one slot for every element you need to store
+        - To find an entry, mod the key by the number of elements to find the offset in the array.
+        - Unrealistic assumptions:
+            - Assumption 1: Number of elements is known ahead of time and fixed
+            - Assumption 2: Each key is unique
+            - Assumption 3: Perfect hash function guarantees no collisions.
+    - Design Decision 1: Hash Function:
+        - How to map a large key space into a smaller domain
+        - Trade-off between being fast vs collision rate
+    - Design Decision 2: Hashing Scheme
+        - How to handle key collisions after hashing
+        - Tradeoff between allocating a large hash table vs additional instructions to get/put keys
+- HASH FUNCTIONS:
+    - For any input key, compute a one-way integer representation of that key (usually 32 or 64 bits). Converts arbitrary byte array into a fixed-length code.
+    - The only two properties of a hash function we care about in a DBMS is whether it is fast and has a low collision rate. We do not want to use a cryptographic or reversible hash function for DBMS hash tables.
+    - Examples:
+        - CRC-64 - used in networking for error detection
+        - MurmurHash - designed as a fast general-purpose hash function
+        - Google CityHash - designed to be faster for short keys
+        - Facebook XXHash - from the creator of zstd compression - state-of-the-art
+        - Google FarmHash - newer version of CityHash with better collision rates
+        - RapidHash - fast hash function without architecture-specific instructions
+- STATIC HASHING SCHEMES:
+    - Approach 1: Linear Probe Hashing - simple and more popular one
+    - Approach 2: Cuckoo Hashing
+    - Both are open addressing - my key can be in any location, not guaranteed to be in one location.
+    - Linear Probe Hashing:
+        - Single giant table of fixed-length slots
+        - Resolve collisions by linearly searching for the next free slot in the table.
+            - To determine whether an element is present, hash to a location in the table and scan for it
+            - Store keys in table to know when to stop scanning
+            - Insertions and deletions are generalizations of lookups
+        - The table’s load factor determines when it is becoming too full and should be resized.
+            - Load factor = Active Keys / # of slots
+            - Allocate a new table twice as large and rehash entries
+        - For deletes:
+            - Approach 1: Movement - rehash keys until you find the first empty slot. Not the best
+            - Approach 2: Tombstone - maintain separate bit map to indicate that the entry in the slot is logically deleted. Reuse the slot for new keys. May need periodic garbage collection.
+    - Cuckoo Hashing:
+        - Use multiple hash functions to find multiple locations in the hash table to insert records.
+            - On insert, check multiple locations and pick the one that is empty
+            - If no location is available, evict the element from one of them and then re-hash it to find a new location. It’s what cuckoos do by taking over other birds’ nest
+        - Look-ups and deletions are always O(1) because only one location per hash table is checked. It’s slower than linear probing.
+- Key/Value Entries:
+    - Fixed-length Key/Values:
+        - Store inline within the hash table pages
+        - Optional: Store the key’s hash with the key for faster comparisons
+    - Variable-length Key/Values:
+        - Insert key/value data in separate a private temporary table
+        - Store the hash as the key and use the record if pointing to its corresponding entry in the temporary table as the value.
+- Non-unique Keys:
+    - Choice 1: Separate Linked List
+        - Store values in separate storage area for each key
+        - Value lists can overflow to multiple pages if the number of duplicates is large
+    - Choice 2: Redundant Keys
+        - Store duplicate keys entries together in the hash table
+        - This is what most systems do
+- Optimizations:
+    - Specialized hash table implementations based on key type(s) and sizes
+        - Example: Maintain multiple hash tables for different string sizes for a set of keys
+    - Store metadata separate in a separate array
+        - Packed bitmap tracks whether a slot is empty/tombstone
+- Observation:
+    - The previous hash tables require the DBMS to know the number of elements it wants to store
+        - Otherwise it must rebuild the table if it needs to grow/shrink in size
+    - Dynamic hash tables incrementally resize themselves as needed
+        - Chained hashing
+            - Maintain a lined list of buckets for each slot in the hash table. Similar to java.
+            - Resolve collisions by placing all elements with the same hash key into the same bucket.
+                - To determine whether an element is present, hash to its bucket and scan for it
+                - Insertions and deletions are generalizations of lookups.
+        - Extendible hashing
+            - Its approach splits buckets incrementally instead of letting the linked list grow forever.
+            - Multiple slot locations can point to the same bucket chain.
+            - Reshuffle bucket entries on split and increase the number of bits to examine. Data movement is localized to just the split chain
+        - Linear hashing (not to be confused with Linear probe hashing)
+            - The hash table maintains a pointer that tracks the next bucket to split
+                - When any bucket overflows, split the bucket at the pointer location
+                - The bucket being split may not be the one that overflowed, contrary to Extensible Hashing
+            - Use multiple hashes to find the right bucket for a given key.
+            - Can use different overflow criterion:
+                - Space utilization
+                - Average length of overflow chains</pre>
+</body>
+</html>
