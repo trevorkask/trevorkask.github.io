@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 9: Vector Indexes, Inverted Indexes, Skip Lists, and Bloom Filters</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 9: VECTOR INDEXES + INVERTED INDEXES + SKIP LISTS + BLOOM FILTERS
+- An index is a data structure of a subset of a table’s attributes that are organized and/or sorted to the location of specific tuples using those attributes. Example: B+ tree
+- A filter is a data structure that answers set membership queries; it tells you whether a key (likely) exists in a set but not where it is located. Example: Bloom filter.
+- BLOOM FILTERS:
+    - Probabilistic data structure (bitmap) that answers set membership queries.
+        - False negatives will never occur.
+        - False positives can sometimes occur.
+        - See https://krisives.github.io/bloom-calculator/
+    - Insert(x):
+        - Use k hash functions to set bits in the filter to 1.
+    - Lookup(x):
+        - Check whether the bits are 1 for each hash function
+    - More hash functions lead to a more correct answer because the result is pretty much the combination of all the results of the hash functions
+    - You cannot update a Bloom filter when you delete a key. For this reason, we do not use a bloom filter in scenarios where we delete keys
+- OTHER FILTERS:
+    - Counting Bloom Filters:
+        - Supports dynamically adding and removing keys
+        - Uses integers instead of bits to count the number of occurrences of a key in a set.
+    - Cuckoo Filter:
+        - Also supports dynamically adding and removing keys.
+        - Uses a Cuckoo Hash Table but stores fingerprints instead of full keys.
+    - Succinct Range Filter (SuRF):
+        - Immutable compact trie that supports approximate exact matches and range filtering.
+- Observation:
+    - The easiest way to implement a dynamic order-preserving index is to use a sorted linked list.
+    - All operations have to linear search. Average cost O(n)
+    - If we want to jump over the next node in a linked list, we can have a pointer skip over to the node we are looking for.
+- SKIP LISTS:
+    - Multiple levels of linked lists with extra pointers to skip over entries.
+        - 1st level is a sorted list of all keys.
+        - 2nd level links every other key
+        - 3rd level links every fourth key
+        - Each level has 1/2 the keys of one below it.
+    - Smells like a B+ tree.
+    - The upper levels also have pointers to the levels below them.
+    - Maintains keys in sorted order without requiring global rebalancing. Approximate O(log n) search times.
+    - Mostly for in-memory data structures. Example: LSM MemTable.
+    - When searching, we look at the top levels and compare their values; if our value lies between nodes, we go one level below.
+    - Delete:
+        - First logically remove a key from the index by setting a flag to tell threads to ignore
+        - Then physically remove the key once we know that no other thread is holding the reference
+    - Advantages:
+        - May use less memory than a B+ tree, if you do not include reverse pointers.
+        - Insertions and deletions do not require rebalancing.
+    - Disadvantages:
+        - Not disk/cache friendly because they do not optimize locality of references.
+        - Reverse search is non-trivial
+- Observation:
+    - The inner node keys in a B+ tree cannot tell you whether a key exists in the index. You must always traverse to the leaf node.
+    - This means that you could have (at least) one buffer pool page miss per level in the tree just to find out a key does not exist.
+- TRIE INDEX:
+    - Use a digital representation of keys to examine prefixes one-by-one. Aka Digital Search Tree, Prefix Tree.
+    - Shape depends on keys and lengths.
+        - Does not depend on existing keys or insertion order.
+        - Does not require rebalancing operations.
+    - All operations have O(k) complexity where k is the length of the key.
+        - Path to a leaf node represents a key.
+        - Keys are stored implicitly and can be reconstructed from paths.
+    - Trie key span:
+        - The span of a trie level is the number of bits that each partial key / digit represents
+            - If the digit exists in the corpus, then store a pointer to the next level in the trie branch. Otherwise, store null.
+        - This determines the fan-out of each node and the physical height of the tree.
+        - We can do a horizontal compression and only keep path decisions for 0 or 1.
+        - We can do vertical compression too.
+    - Radix tree:
+        - This is a vertical compressed trie that compacts nodes with a single child.
+        - Can produce false positives, so the DBMS always checks the original tuple to see whether a key matches
+        - 99% of systems that use a trie use a radix tree. Redis, duckdb, sqlite use this.
+        - For HAIR, HELL, HER:
+            - Level 0: H
+            - Level 1: AIR, E
+            - Level 2: LL, R
+- Observation:
+    - The indexes that we’ve discussed are useful for “point” and “range” queries:
+        - Find all customers in the 15217 zip code.
+        - Find all orders between June 2024 and September 2024.
+    - They are not good at keyword searches.
+        - Example: Find all wikipedia articles that contain the word “Pavlo”.
+- INVERTED INDEX:
+    - An inverted index stored a mapping of terms to records that contain those terms in the target attributed.
+    - Many major DBMSs support these natively. But there are also specialized DBMSs and libraries. Solr, elasticsearch, Lucent and Splunk are good examples.
+    - Lucene:
+        - Uses a Finite State Transducer for determining offset of terms in dictionary.
+        - Incrementally create dictionary segments and then merge them in the background.
+            - Uses compression methods we previously discussed
+            - Also supports precomputed aggregations for terms and occurrences.
+    - PostgreSQL:
+        - Its Generalized Inverted Index (GIN) uses a B+ tree for the term dictionary that map to a posting list data structure.
+        - Posting list contents varies depending on number of records per term:
+            - Few: Sorted list of record ids.
+            - Many: Another B+ tree of record ids.
+        - Uses a separate “pending list” log to avoid incremental updates.
+    - Enhancements:
+        - Rankings: The DBMS can rank search results based on the frequency of terms in each record relative to other records. Example: TF-IDF, BM25.
+        - Tokenizers: Split terms into n-grams to support fuzzy text searches and autocomplete. Example: Elastic N-gram, pg_trgm.
+- Observation:
+    - Inverted indexes search data based on its contents with some term tweaking based on linguistic models.
+    - Instead of searching for records containing keywords, an application may want search for records that are semantically similar to topics.
+- VECTOR INDEXES:
+    - Specialized data structures to perform nearest-neighbor searches on embeddings (I.e one-dimensional arrays of floating point numbers)
+        - May also need to filter data before / after vector searches.
+        - Result correctness depends on whether the result “feels right”
+    - Two approaches:
+        - Inverted indexes:
+            - Partition vectors into smaller groups using a clustering algorithm and then build an inverted index that maps cluster centroids to records.
+                - Preprocess/quantize vectors to reduce dimensionality.
+                - Some implementations support incremental updates. Examples: IVFFlat, pgVector
+            - To find a match. Use same clustering algorithm to map into a group, then scan that group’s vectors. Also check nearby groups to improve accuracy
+        - Graphs:
+            - Build a graph where each node represents a vector and it has edges to (at most) its n nearest neighbors.
+                - Can use multiple levels of graphs (HNSW)
+                - Examples: Faiss, hnswlib, DiskANN
+            - To find a match for a given vector, enter the graph and then greedily choose the net edge that moves closer to that vector.
+            - Smells like a skip list.
+- PARTIAL INDEXES:
+    - Create an index on a subset of the entire table. This potentially reduces its size and the amount of overhead to maintain it.
+    - One common use case is to partition indexes by date ranges.
+        - Create a separate index per month, year.
+- Index include columns:
+    - Embed additional columns in indexes to support index-only queries.
+    - These extra columns are only stored in the leaf nodes and are not part of the search key.
+    - If all attributes a query needs are available in an index, then the DBMS does not need to retrieve the tuple. Aka covering index or index-only scans.</pre>
+</body>
+</html>
