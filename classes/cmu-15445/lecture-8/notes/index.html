@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lecture 8: B+ Trees</title>
+</head>
+<body style="background: black; color: white;">
+<pre>LECTURE 8: B+ TREES
+- B in B-trees means Boeing where it was first written. Many people think it means Balanced.
+- A B+ tree is a self-balancing, ordered m-way tree for searches, sequential access, insertions, and deletions in O(log m of n) where m is the tree fanout.
+    - It is perfectly balanced (I.e, every leaf node is at the same depth in the tree)
+    - Every node other than the root is at least half-full
+    - Every inner node(non-leaf and non-root nodes) with k keys has k+1 non-null children.
+    - Optimized for reading/writing large data blocks.
+- We also have sibling pointers that point to nodes on the same level. This is useful for those range scans (like find me keys &gt;15) where I can go down to one node and then I won’t want to backtrack all the way back to the root node but instead connect to the other subtree directly. They are bidirectional.
+- NODES:
+    - Every B+ tree node is composed of an array of key/value pairs.
+        - The keys are derived from the index’s target attribute(s).
+        - The values will differ based on whether the node is classified as an inner node or a leaf node.
+    - The arrays are (usually) kept in sorted key order.
+    - Store all NULL keys at either first or last leaf nodes
+    - The node has metadata on level number, number of slots, prev, next, high key and also has the sorted keys pointing to their corresponding values.
+- Leaf node values:
+    - Approach 1: Record IDs
+        - A pointer to the location of the tuple to which the index entry corresponds.
+        - Most common implementation.
+    - Approach 2: Tuple Data
+        - Index-organized storage (from lecture 5)
+        - Primary Key Index: Leaf nodes store the contents of the tuple
+        - Secondary Indexes: Leaf nodes store tuples’ primary key as their values
+- B tree vs B+ tree:
+    - The original B-tree stored keys and values in all nodes in the tree.
+        - More space-efficient since each key only appears once in the tree
+    - A B+ tree only stores values in leaf nodes. Inner nodes only guide the search process.
+- B+ TREE: INSERT
+    - Traverse and find correct leaf node L
+    - Insert data entry into L in sorted order.
+    - If L has enough space, done!
+    - Otherwise, split L keys into L and a new node L2
+        - Redistribute entries evenly, copy up middle key.
+        - Insert index entry pointing to L2 into parent of L.
+    - To split inner node, redistribute entries evenly, but push up middle key.
+    - We recursively split the nodes above if they are also full.
+- B+ TREE: DELETE
+    - Start at root, find leaf L where entry belongs.
+    - Remove the entry.
+    - If L is at least half-full, done!
+    - If L has only m/2-1 entries,
+        - Try to re-distribute, borrowing from sibling (adjacent node with same parent as L)
+        - If re-distribution fails, merge L and sibling.
+    - If merge occurred, must delete entry (pointing to L or sibling) from parent of L.
+    - We only borrow from siblings because if we go to other levels, we may need to start taking latches, which may slow down the process.
+    - If we do not have “rich” siblings to borrow from and we risk under-filling them, we merge the new nodes. If they also end up under-filled, we pull down the upper leaf and merge all three. This results in shrinking the tree height.
+- COMPOSITE INDEX:
+    - A composite index is when the key is comprised of two or more attributes.
+        - Example: Index on &lt;a,b,c&gt;
+    - DBMS can use B+ tree index if the query provides a “prefix” of composite key.
+        - Supported: (a=1 AND b=2 AND c=3)
+        - Supported: (a=1 AND b=2)
+        - Rarely supported: (b=2), (c=3)
+- DUPLICATE KEYS:
+    - Approach 1: Append Record ID
+        - Add the tuple’s unique record ID as part of the key to ensure that all keys are unique.
+        - The DBMS can still use partial keys to find tuples
+    - Approach 2: Overflow Leaf Nodes (Don’t do this)
+        - Allow leaf nodes to spill into overflow nodes that contain the duplicate keys
+        - This is more complex to maintain and modify.
+- CLUSTERED INDEXES:
+    - The table is stored in the sort order specified by the primary key.
+        - Can be either heap- or index-organized storage.
+    - Some DBMSs always use a clustered index.
+        - If a table does not contain a primary key, the DBMS will automatically make a hidden primary key.
+    - Other DBMSs cannot use them at all
+    - Clustered B+ Tree:
+        - Traverse to the left-most leaf page and then retrieve tuples from all leaf pages
+        - This will always be better than sorting data for each query
+    - Index scan page sorting:
+        - Retrieving tuples in the order they appear in a non-clustered index is inefficient due to redundant reads.
+        - A better approach is to find all the tuples that the query needs and then sort them based on their page ID.
+        - The DBMS retrieves each page once.
+    - B+ Tree Design Choices:
+        - Node size
+            - The slower the storage device, the large the optimal node size for a B+ tree. HDD: ~1MB, SSD: ~10kb, In-memory: ~512B
+            - Optimal sizes can vary depending on the workload. Lead node scans vs root-to-leaf traversals
+        - Merge threshold
+            - Some DBMSs do not always merge nodes when they are half full. Average occupancy rate for B+ tree nodes is 69%
+            - Delaying a merge operation may reduce the amount of reorganization.
+            - It may also be better to let undefiled nodes exist and then periodically rebuild entire tree
+            - This is why PostgreSQL calls their B+ tree a non-balanced B+ tree (nbtree)
+        - Variable-length keys
+            - Approach 1: Pointers
+                - Store the keys as pointers to the tuple’s attribute
+                - Also called T-trees (in-memory DBMSs)
+            - Approach 2: Variable-Length Nodes
+                - The size of each node in the index can vary
+                - Requires careful memory management
+            - Approach 3: Padding
+                - Always pad the key to be max length of the key type
+            - Approach 4: Key Map / Indirection - most common
+                - Embed an array of pointers that map to the key + value list within the node.
+        - Intra-node search
+            - Approach 1: Linear
+                - Scan node keys from beginning to end.
+                - Use SIMD to vectorize comparisons (single instruction multiple data) - you can execute an operation on multiple data and return a vectorized output, then condense it into one result.
+            - Approach 2: Binary Search
+                - Jump to middle key, pivot left/right depending on comparison.
+            - Approach 3: Interpolation
+                - Approximate location of desired key based on known distribution of keys.
+- OPTIMIZATIONS:
+    - Pointer Swizzling:
+        - Nodes use page ids to reference other nodes in the index. The DBMS must get the memory location from the page table during traversal.
+        - If a page is pinned in the buffer pool, then we can store raw pointers instead of page ids. This avoids address lookups from the page table.
+    - Buffered Updates:
+        - Modifying a B+ tree is expensive when the BMS has to split/merge nodes.
+            - Worst case is when DBMS reorganizes the entire tree
+            - The worker that causes a split/merge is responsible for doing the work.
+        - What if there was a way to delay updates and then apply multiple changes together in a batch? We have a write-optimized B+ tree or a B-epsilon tree or fractal trees. These are rare because of how hard it is to implement
+        - Instead of immediately applying updates, store changes to key/value entries in log buffers at inner nodes.
+        - Updates cascade down to lower nodes incrementally when buffers get full.
+    - Partial Indexes - Index only rows that satisfy a specified predicate, reducing index size and maintenance overhead.
+    - Include Columns - Store additional non-key columns in leaf nodes to enable index-only scans without affecting the tree's ordering.
+    - Prefix Compression - Store common prefixes of adjacent keys only once to reduce storage overhead.
+    - Deduplication - Store duplicate keys once alongside a collection of pointers to their corresponding records.
+    - Suffix Truncation - Remove unnecessary trailing portions of internal separator keys while preserving correct search navigation, increasing tree fanout.
+    - Bulk Insert - Sort entries and construct the B+ tree bottom-up to avoid repeated traversals and node splits during large insertions.</pre>
+</body>
+</html>
