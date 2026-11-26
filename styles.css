@@ -217,14 +217,18 @@ h1 {
 }
 
 .blog-post figure {
-  margin: 0 0 2rem;
+  width: 100%;
+  margin: 0 auto 2rem;
 }
 
 .blog-post img {
   display: block;
   width: 100%;
+  aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
   border-radius: 8px;
+  object-fit: cover;
+  object-position: center;
 }
 
 .blog-post figcaption {
