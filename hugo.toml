@@ -37,7 +37,7 @@ weight = 5
     startLevel = 2
 
 [params]
-  description = """Working on making 1000 computers agree on what just happened!
+  description = """***Working on making 1000 computers agree on what just happened!***
 
 I am a distributed systems engineer at Apple, passionate about storage systems, networking, concurrency, and distributed computing.
 
