@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>What are distributed systems and why do they exist? | Trevor Kasuku</title>
+    <meta name="description" content="Distributed systems from first principles.">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&amp;display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="../../">Trevor Kasuku</a>
+      <nav aria-label="Primary navigation">
+        <a href="../../projects/">Projects</a>
+        <a href="../../blogs/">Blogs</a>
+        <a href="../../bookshelf/">Bookshelf</a>
+        <a href="../../classes/">Classes</a>
+        <a href="https://github.com/trevorkask">GitHub</a>
+      </nav>
+    </header>
+
+    <main class="site-shell">
+      <section class="page-title">
+        <h1>What are distributed systems and why do they exist?</h1>
+        <p>Aug 2026</p>
+      </section>
+
+      <article class="blog-post">
+        <figure>
+          <img src="../../images/bezos-books.png" alt="Jeff Bezos surrounded by books and boxes.">
+        </figure>
+
+        <p>Imagine you are Jeff Bezos and you want to start your online book-selling company called Amazon. It’s just the first few months so you use your computer to store, display, and track the books. You also include a feature for accepting book orders from customers. Now, several months down the line, with some good advertising, you get more customers and some of them live farther away. You also cannot afford to let the computer shut down because the customers won’t be able to make purchases.</p>
+
+        <p>You might say, “Let’s buy a more powerful computer”. This would help serve more customer orders but it still sits in one spot and far from many of our customers around the globe. Also, it it shut down or needed to restart, customers will not be able to order books until it is back up. An interesting question is: “what if we add an extra computer to share the work?” We could design this in different ways: i) the two computers are scattered across the world so that they can serve customers close to their region, ii) the two computers could process order requests at the same time and then if one went down, the order requests would just go to the computers that are still up. This is the idea behind distributed systems: multiple computers communicating over a network to accomplish a task together.</p>
+
+        <p>However, adding an extra computer introduces a new problem. Suppose both of them receive an order of the last remaining copy of a book at the same time, how do they make sure they don’t sell the same book and successfully complete both orders? With one database, we ensure that checking the inventory and making a purchase happen in one indivisible operation. Once a customer has ordered a book, the next customer finds that there are non available in the inventory. We could also do this with multiple computers where they check the same database. Now, we have moved the failure point to the database. What happens when this database goes down? We could keep another copy of the inventory on different computer. This is called replication. If one of the computers with the database goes down, the other one can take over.</p>
+
+        <p>But now, whenever the inventory changes, we need to update the other copy as well with the same change. Say, the first database handles the order request for the last book in the inventory and completes it. Before the update reaches the second computer, the first computer crashes. Based on our replication setup, the second computer takes over and it will still show that one copy of the book(Beach Read) is still there even though we already sold it. We added an extra copy to protect our service from being unavailable and now we need to decide when it is safe to confirm an order and which computer can process the next purchase. What if we decide to coordinate the other copy before we confirm an order? We have to keep in mind that this communication takes extra time especially if we have many copies. This is also where it gets weird - if a computer does not reply, we cannot immediately tell whether it crashed, there’s something wrong with the network or maybe it is taking too long and it’ll eventually get back to us. The solution would be to add rules governing how long we are waiting, which computers(copies) must participate in this update, and how the other computer can safely take over the work.</p>
+
+        <p>Thus far, we have explored adding computers and maintaining multiple copies of the inventory. Say, the business grows even more and one database is not able to keep the entire catalog or handle all the requests it is receiving. Instead of making each computer handle the entire catalog, we could divide our inventory into smaller groups. Each database would manage a given group of the books. For example, we could have 26 databases - one handling each letter of the alphabet which represents the first letter of the book title(assuming it’s not a number). THis is called sharding.</p>
+
+        <p>Replication involves keeping multiple copies of our inventory. Sharding involves dividing the inventory amongst computers. We can use both at the same time: divide the catalog into shards and then maintain multiple replicas of each shard. We earlier mentioned that we have customers who live farther away. How do we handle their stuff? We can put copies of our data close to their regions so that their requests do not have to spend a lot of time travelling across the world.</p>
+
+        <p>We have explored several designs that have the same core problem: each computer is aware of what has happened locally but has to receive updates from other computers over the network. As for the network, those update messages can take time or the communication can fail even though the computers are working fine. Say, one computer sends a reservation request to another and does not receive a reply. The reservation may have failed. The request may still be processing. Or maybe it went through and the reply was lost. We can’t tell. This is the trouble with distributed systems. THeir design must accommodate these uncertainties. We need distributed systems because sometimes one computer is not enough: more work than it one can handle, users spread out in several regions, or maybe we cannot afford to have our service go down when the computer fails. Distributed systems solve these problems while creating coordination nightmares and silent issues. However, if we already have one computer that satisfies all our needs, adding more computers in the system introduces unnecessary complexity.</p>
+
+        <p>Striving to keep the copies consistent seems like an obvious direction. So why do many systems intentionally settle for weaker consistency designs?</p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <p>&copy; 2026 Trevor Kasuku.</p>
+    </footer>
+  </body>
+</html>
