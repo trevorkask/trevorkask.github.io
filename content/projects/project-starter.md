@@ -1,7 +1,7 @@
 ---
 title: "Relational Database"
 date: 2026-08-03
-label: "Build"
+label: "Storage Systems"
 blurb: "Built core relational database components from first principles, from storage/page layout and buffer pool management to query execution, indexing, and transaction-aware data access."
 ---
 
